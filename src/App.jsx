@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   Dumbbell, UtensilsCrossed, Scale, BarChart3, Plus, X, TrendingUp,
   TrendingDown, Minus, Sparkles, Loader2, Trash2, Calendar as CalendarIcon,
-  LineChart as LineChartIcon, Play, Square, Clock, RotateCcw, Check, Pencil
+  LineChart as LineChartIcon, Play, Square, Clock, RotateCcw, Check, Pencil,
+  ChevronRight
 } from 'lucide-react';
 import {
   LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -199,15 +200,45 @@ function AppBackground({ children }) {
 
 const inputStyle = { border: `1px solid rgba(255,255,255,0.7)`, background: 'rgba(255,255,255,0.6)', borderRadius: 10, padding: '8px 10px', fontSize: 14, fontFamily: FONT, outline: 'none', boxSizing: 'border-box' };
 
+function Sheet({ title, onClose, children }) {
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 200, display: 'flex', alignItems: 'flex-end' }}>
+      <div onClick={onClose} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(4px)' }} />
+      <div style={{
+        position: 'relative', width: '100%', maxWidth: 430, margin: '0 auto',
+        background: 'rgba(250,251,255,0.92)', backdropFilter: 'blur(30px) saturate(180%)', WebkitBackdropFilter: 'blur(30px) saturate(180%)',
+        borderRadius: '28px 28px 0 0', maxHeight: '82vh', overflowY: 'auto', padding: '14px 20px 30px', boxSizing: 'border-box',
+        boxShadow: '0 -8px 40px rgba(0,0,0,0.2)', animation: 'sheetUp 0.32s cubic-bezier(0.22,1,0.36,1)',
+      }}>
+        <style>{`@keyframes sheetUp { from { transform: translateY(100%);} to { transform: translateY(0);} }`}</style>
+        <div style={{ width: 36, height: 5, borderRadius: 3, background: 'rgba(120,120,128,0.3)', margin: '0 auto 14px' }} />
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+          <h2 style={{ fontSize: 19, fontWeight: 700, color: C.text, fontFamily: FONT, margin: 0 }}>{title}</h2>
+          <button onClick={onClose} style={{ border: 'none', background: 'rgba(120,120,128,0.16)', borderRadius: 14, width: 28, height: 28, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <X size={15} color={C.sub} />
+          </button>
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+}
+
 /* ---------- Workout Tab ---------- */
 
 function WorkoutTab({ workouts, save }) {
   const [date, setDate] = useState(todayStr());
   const [time, setTime] = useState(nowTime());
+  const [showPicker, setShowPicker] = useState(false);
   const [activeGroup, setActiveGroup] = useState(null);
   const [pending, setPending] = useState([]); // chips clicked in current panel, not yet added
   const [selected, setSelected] = useState([]); // exercises added to this session
   const [custom, setCustom] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searching, setSearching] = useState(false);
+  const [searchResults, setSearchResults] = useState([]);
+  const [searchError, setSearchError] = useState('');
+  const [searchPending, setSearchPending] = useState([]);
   const [session, setSession] = useState({ running: false, startedAt: null, elapsedSec: 0, startTimeStr: null });
   const [rest, setRest] = useState({ running: false, startedAt: null, elapsedSec: 0 });
   const [editingId, setEditingId] = useState(null);
@@ -235,6 +266,35 @@ function WorkoutTab({ workouts, save }) {
   function confirmAddPending(group) {
     pending.forEach(name => addExercise(name, group.label, group.color));
     setPending([]);
+  }
+  function toggleSearchPending(name) {
+    if (selected.some(e => e.name === name)) return;
+    setSearchPending(p => p.includes(name) ? p.filter(x => x !== name) : [...p, name]);
+  }
+  function confirmAddSearchPending() {
+    searchPending.forEach(name => addExercise(name, 'AI推荐', C.purple));
+    setSearchPending([]);
+  }
+  async function runSearch() {
+    if (!searchQuery.trim()) return;
+    setSearching(true); setSearchError(''); setSearchResults([]);
+    try {
+      const list = await searchExercisesAI(searchQuery.trim());
+      setSearchResults(Array.isArray(list) ? list : []);
+    } catch (e) {
+      setSearchError('搜索失败，可以在上方"按部位选择"里手动添加');
+    } finally {
+      setSearching(false);
+    }
+  }
+  function closePicker() {
+    setShowPicker(false);
+    setActiveGroup(null);
+    setPending([]);
+    setSearchQuery('');
+    setSearchResults([]);
+    setSearchError('');
+    setSearchPending([]);
   }
   function addCustom() {
     const name = custom.trim();
@@ -347,46 +407,101 @@ function WorkoutTab({ workouts, save }) {
           </Row>
         </Card>
 
-        <p style={{ fontSize: 13, color: C.sub, margin: '0 4px 8px', fontFamily: FONT, textTransform: 'uppercase', letterSpacing: 0.3 }}>按部位选择动作</p>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
-          {MUSCLE_GROUPS.map(g => (
-            <Chip key={g.key} label={g.label} active={activeGroup === g.key} color={g.color} glass
-              onClick={() => { setActiveGroup(activeGroup === g.key ? null : g.key); setPending([]); }} />
-          ))}
+        <div style={{ marginBottom: 16 }}>
+          <button onClick={() => setShowPicker(true)} style={{
+            width: '100%', border: '1.5px dashed rgba(10,132,255,0.4)', borderRadius: 18, padding: '16px',
+            background: 'rgba(10,132,255,0.06)', color: C.blue, fontSize: 15, fontWeight: 600, fontFamily: FONT,
+            cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+          }}>
+            <Plus size={20} /> 添加训练动作
+          </button>
         </div>
 
-        {currentGroup && (
-          <Card style={{ marginBottom: 16 }}>
-            <div style={{ padding: 14 }}>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
-                {currentGroup.exercises.map(ex => {
-                  const added = selected.some(e => e.name === ex);
-                  const isPending = pending.includes(ex);
-                  return (
-                    <Chip key={ex} label={ex} active={isPending} done={added} color={currentGroup.color} glass
-                      onClick={() => togglePending(ex)} />
-                  );
-                })}
-              </div>
-              <div style={{ display: 'flex', gap: 8, marginBottom: pending.length > 0 ? 10 : 0 }}>
-                <input
-                  value={custom}
-                  onChange={e => setCustom(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && addCustom()}
-                  placeholder={`添加自定义${currentGroup.label}部动作`}
-                  style={{ flex: 1, ...GLASS, border: '1px solid rgba(255,255,255,0.7)', borderRadius: 12, padding: '9px 12px', fontSize: 13, fontFamily: FONT, outline: 'none' }}
-                />
-                <button onClick={addCustom} style={{ border: 'none', background: currentGroup.color, borderRadius: 12, width: 38, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <Plus size={17} color="#fff" />
-                </button>
-              </div>
-              {pending.length > 0 && (
-                <SmallButton onClick={() => confirmAddPending(currentGroup)} color={currentGroup.color}>
-                  <Plus size={14} /> 添加所选动作（{pending.length}）
-                </SmallButton>
-              )}
+        {showPicker && (
+          <Sheet title="添加训练动作" onClose={closePicker}>
+            <p style={{ fontSize: 12, color: C.sub, margin: '0 4px 8px', fontFamily: FONT, textTransform: 'uppercase', letterSpacing: 0.3 }}>按部位选择</p>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
+              {MUSCLE_GROUPS.map(g => (
+                <Chip key={g.key} label={g.label} active={activeGroup === g.key} color={g.color} glass
+                  onClick={() => { setActiveGroup(activeGroup === g.key ? null : g.key); setPending([]); }} />
+              ))}
             </div>
-          </Card>
+
+            {currentGroup && (
+              <div style={{ ...GLASS, borderRadius: 18, padding: 14, marginBottom: 18 }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
+                  {currentGroup.exercises.map(ex => {
+                    const added = selected.some(e => e.name === ex);
+                    const isPending = pending.includes(ex);
+                    return (
+                      <Chip key={ex} label={ex} active={isPending} done={added} color={currentGroup.color} glass
+                        onClick={() => togglePending(ex)} />
+                    );
+                  })}
+                </div>
+                <div style={{ display: 'flex', gap: 8, marginBottom: pending.length > 0 ? 10 : 0 }}>
+                  <input
+                    value={custom}
+                    onChange={e => setCustom(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && addCustom()}
+                    placeholder={`添加自定义${currentGroup.label}部动作`}
+                    style={{ flex: 1, ...GLASS, border: '1px solid rgba(255,255,255,0.7)', borderRadius: 12, padding: '9px 12px', fontSize: 13, fontFamily: FONT, outline: 'none' }}
+                  />
+                  <button onClick={addCustom} style={{ border: 'none', background: currentGroup.color, borderRadius: 12, width: 38, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Plus size={17} color="#fff" />
+                  </button>
+                </div>
+                {pending.length > 0 && (
+                  <SmallButton onClick={() => confirmAddPending(currentGroup)} color={currentGroup.color}>
+                    <Plus size={14} /> 添加所选动作（{pending.length}）
+                  </SmallButton>
+                )}
+              </div>
+            )}
+
+            <div style={{ height: 1, background: C.sep, margin: '4px 0 18px' }} />
+
+            <p style={{ fontSize: 12, color: C.sub, margin: '0 4px 8px', fontFamily: FONT, textTransform: 'uppercase', letterSpacing: 0.3 }}>AI 搜索相似动作</p>
+            <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+              <input
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && runSearch()}
+                placeholder="比如：适合肩膀的哑铃动作"
+                style={{ flex: 1, ...GLASS, border: '1px solid rgba(255,255,255,0.7)', borderRadius: 12, padding: '10px 12px', fontSize: 13, fontFamily: FONT, outline: 'none' }}
+              />
+              <button onClick={runSearch} disabled={!searchQuery.trim() || searching} style={{
+                border: 'none', background: (!searchQuery.trim() || searching) ? 'rgba(120,120,128,0.16)' : C.purple,
+                borderRadius: 12, width: 42, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                {searching ? <Loader2 size={17} color="#fff" style={{ animation: 'spin 1s linear infinite' }} /> : <Sparkles size={17} color="#fff" />}
+              </button>
+            </div>
+            {searchError && <div style={{ fontSize: 12, color: C.red, fontFamily: FONT, marginBottom: 10 }}>{searchError}</div>}
+            {searchResults.length > 0 && (
+              <div style={{ ...GLASS, borderRadius: 18, padding: 14 }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: searchPending.length > 0 ? 10 : 0 }}>
+                  {searchResults.map(name => {
+                    const added = selected.some(e => e.name === name);
+                    const isPending = searchPending.includes(name);
+                    return (
+                      <Chip key={name} label={name} active={isPending} done={added} color={C.purple} glass
+                        onClick={() => toggleSearchPending(name)} />
+                    );
+                  })}
+                </div>
+                {searchPending.length > 0 && (
+                  <SmallButton onClick={confirmAddSearchPending} color={C.purple}>
+                    <Plus size={14} /> 添加所选动作（{searchPending.length}）
+                  </SmallButton>
+                )}
+              </div>
+            )}
+
+            <div style={{ marginTop: 20 }}>
+              <PrimaryButton onClick={closePicker} color={C.blue}>完成</PrimaryButton>
+            </div>
+          </Sheet>
         )}
 
         {selected.length > 0 && (
@@ -568,10 +683,18 @@ function WorkoutTab({ workouts, save }) {
   );
 }
 
+async function searchExercisesAI(query) {
+  const response = await fetch('/api/search-exercises', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ query }),
+  });
+  if (!response.ok) throw new Error('api not available');
+  return response.json();
+}
+
 /* ---------- Meal Tab ---------- */
 
-/* 注意：AI 识别请求指向 /api/estimate-calories，这是部署到 Vercel 后才存在的后端接口。
-   密钥不会出现在浏览器代码里，安全地放在服务器环境变量中。 */
 async function callClaudeForCalories(description, mealType) {
   const response = await fetch('/api/estimate-calories', {
     method: 'POST',
@@ -926,8 +1049,10 @@ function weightColor(v) {
 function StatsTab({ workouts, meals, weights }) {
   const [metric, setMetric] = useState('workout');
   const [view, setView] = useState('calendar');
+  const [detail, setDetail] = useState(null);
   const days = buildDayRange(70);
   const days30 = buildDayRange(30);
+  const thisWeekDates = buildDayRange(7);
 
   const workoutByDate = useMemo(() => {
     const m = {};
@@ -1044,8 +1169,100 @@ function StatsTab({ workouts, meals, weights }) {
           </div>
         </Card>
 
-        <SummaryRow workouts={workouts} meals={meals} weights={weights} />
+        <SummaryRow workouts={workouts} meals={meals} weights={weights} onSelect={setDetail} />
       </div>
+
+      {detail === 'workout' && (
+        <Sheet title="本周训练详情" onClose={() => setDetail(null)}>
+          {(() => {
+            const list = [...workouts].filter(w => thisWeekDates.includes(w.date)).sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time));
+            return list.length === 0 ? <Empty text="本周还没有训练记录" /> : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {list.map(w => (
+                  <div key={w.id} style={{ ...GLASS, borderRadius: 16, padding: '12px 14px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, fontWeight: 600, color: C.text, fontFamily: FONT, marginBottom: 4 }}>
+                      <span>{fmtDate(w.date)} · {w.time}</span>
+                      {w.totalDurationSec ? <span style={{ color: C.green }}>{fmtSec(w.totalDurationSec)}</span> : null}
+                    </div>
+                    <div style={{ fontSize: 12, color: C.sub, fontFamily: FONT }}>{(w.exercises || []).map(e => e.name).join('、')}</div>
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
+        </Sheet>
+      )}
+
+      {detail === 'duration' && (
+        <Sheet title="本周训练时长详情" onClose={() => setDetail(null)}>
+          {(() => {
+            const byDay = {};
+            workouts.filter(w => thisWeekDates.includes(w.date)).forEach(w => {
+              byDay[w.date] = (byDay[w.date] || 0) + (w.totalDurationSec || (w.exercises || []).reduce((s, e) => s + (e.durationSec || 0), 0));
+            });
+            const rows = thisWeekDates.filter(d => byDay[d]).sort((a, b) => b.localeCompare(a));
+            return rows.length === 0 ? <Empty text="本周还没有训练时长记录" /> : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {rows.map(d => (
+                  <Row key={d} last style={{ ...GLASS, borderRadius: 14, marginBottom: 0 }}>
+                    <span style={{ fontSize: 14, color: C.text, fontFamily: FONT }}>{fmtDate(d)}</span>
+                    <span style={{ fontSize: 14, fontWeight: 600, color: C.teal, fontFamily: FONT }}>{fmtSec(byDay[d])}</span>
+                  </Row>
+                ))}
+              </div>
+            );
+          })()}
+        </Sheet>
+      )}
+
+      {detail === 'calories' && (
+        <Sheet title="每日热量详情" onClose={() => setDetail(null)}>
+          {(() => {
+            const byDay = {};
+            meals.forEach(m => { byDay[m.date] = (byDay[m.date] || 0) + (m.calories || 0); });
+            const rows = Object.keys(byDay).sort((a, b) => b.localeCompare(a)).slice(0, 14);
+            return rows.length === 0 ? <Empty text="还没有饮食记录" /> : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {rows.map(d => (
+                  <Row key={d} last style={{ ...GLASS, borderRadius: 14, marginBottom: 0 }}>
+                    <span style={{ fontSize: 14, color: C.text, fontFamily: FONT }}>{fmtDate(d)}</span>
+                    <span style={{ fontSize: 14, fontWeight: 600, color: C.orange, fontFamily: FONT }}>{byDay[d]} 大卡</span>
+                  </Row>
+                ))}
+              </div>
+            );
+          })()}
+        </Sheet>
+      )}
+
+      {detail === 'weight' && (
+        <Sheet title="体重变化详情" onClose={() => setDetail(null)}>
+          {(() => {
+            const list = [...weights].sort((a, b) => b.date.localeCompare(a.date));
+            return list.length === 0 ? <Empty text="还没有体重记录" /> : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {list.map((w, i) => {
+                  const next = list[i + 1];
+                  const delta = next ? +(w.weight - next.weight).toFixed(1) : null;
+                  return (
+                    <Row key={w.id} last style={{ ...GLASS, borderRadius: 14, marginBottom: 0 }}>
+                      <span style={{ fontSize: 14, color: C.text, fontFamily: FONT }}>{fmtDate(w.date)}</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ fontSize: 14, fontWeight: 600, color: C.text, fontFamily: FONT }}>{w.weight} kg</span>
+                        {delta !== null && (
+                          <span style={{ fontSize: 12, fontFamily: FONT, color: delta > 0 ? C.red : delta < 0 ? C.green : C.sub }}>
+                            {delta > 0 ? '+' : ''}{delta}
+                          </span>
+                        )}
+                      </div>
+                    </Row>
+                  );
+                })}
+              </div>
+            );
+          })()}
+        </Sheet>
+      )}
     </div>
   );
 }
@@ -1063,7 +1280,7 @@ function Legend({ items }) {
   );
 }
 
-function SummaryRow({ workouts, meals, weights }) {
+function SummaryRow({ workouts, meals, weights, onSelect }) {
   const thisWeek = buildDayRange(7);
   const weekWorkouts = workouts.filter(w => thisWeek.includes(w.date)).length;
   const weekMinutes = Math.round(workouts.filter(w => thisWeek.includes(w.date)).reduce((s, w) => s + (w.totalDurationSec || (w.exercises || []).reduce((a, e) => a + (e.durationSec || 0), 0)), 0) / 60);
@@ -1077,19 +1294,21 @@ function SummaryRow({ workouts, meals, weights }) {
   const weightChange = sorted.length >= 2 ? +(sorted[sorted.length - 1].weight - sorted[0].weight).toFixed(1) : null;
 
   const items = [
-    { label: '本周训练', value: `${weekWorkouts}次`, color: C.green },
-    { label: '本周时长', value: `${weekMinutes}分`, color: C.teal },
-    { label: '日均热量', value: avgCalories ? `${avgCalories}` : '--', color: C.orange },
-    { label: '体重变化', value: weightChange !== null ? `${weightChange > 0 ? '+' : ''}${weightChange}kg` : '--', color: weightChange > 0 ? C.red : C.blue },
+    { key: 'workout', label: '本周训练', value: `${weekWorkouts}次`, color: C.green },
+    { key: 'duration', label: '本周时长', value: `${weekMinutes}分`, color: C.teal },
+    { key: 'calories', label: '日均热量', value: avgCalories ? `${avgCalories}` : '--', color: C.orange },
+    { key: 'weight', label: '体重变化', value: weightChange !== null ? `${weightChange > 0 ? '+' : ''}${weightChange}kg` : '--', color: weightChange > 0 ? C.red : C.blue },
   ];
 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, marginBottom: 24 }}>
       {items.map(it => (
-        <Card key={it.label}>
-          <div style={{ padding: '12px 6px', textAlign: 'center' }}>
+        <Card key={it.label} onClick={() => onSelect(it.key)}>
+          <div style={{ padding: '12px 6px 8px', textAlign: 'center', position: 'relative' }}>
             <div style={{ fontSize: 15, fontWeight: 700, color: it.color, fontFamily: FONT }}>{it.value}</div>
-            <div style={{ fontSize: 10, color: C.sub, fontFamily: FONT, marginTop: 2 }}>{it.label}</div>
+            <div style={{ fontSize: 10, color: C.sub, fontFamily: FONT, marginTop: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1 }}>
+              {it.label}<ChevronRight size={10} color={C.sub} />
+            </div>
           </div>
         </Card>
       ))}
@@ -1133,8 +1352,9 @@ function TabBar({ tab, setTab }) {
               display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, padding: '6px 16px', cursor: 'pointer',
               flex: 1,
             }}>
-            <Icon size={22} color={active ? C.blue : C.sub} strokeWidth={active ? 2.3 : 1.8} />
-            <span style={{ fontSize: 10, fontWeight: active ? 600 : 500, color: active ? C.blue : C.sub, fontFamily: FONT }}>{it.label}</span>
+            <Icon size={22} color={active ? C.blue : C.sub} strokeWidth={active ? 2.3 : 1.8}
+              style={{ transform: active ? 'scale(1.14) translateY(-1px)' : 'scale(1)', transition: 'transform 0.32s cubic-bezier(0.34,1.56,0.64,1), color 0.2s' }} />
+            <span style={{ fontSize: 10, fontWeight: active ? 600 : 500, color: active ? C.blue : C.sub, fontFamily: FONT, transition: 'color 0.2s' }}>{it.label}</span>
           </button>
         );
       })}
@@ -1143,6 +1363,8 @@ function TabBar({ tab, setTab }) {
 }
 
 /* ---------- Root ---------- */
+
+const TAB_ORDER = ['workout', 'meal', 'weight', 'stats'];
 
 function loadLocal(key, fallback) {
   try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; } catch (e) { return fallback; }
@@ -1157,17 +1379,77 @@ export default function FitTrackApp() {
   const [meals, setMeals] = useState(() => loadLocal('fittrack_meals', []));
   const [weights, setWeights] = useState(() => loadLocal('fittrack_weights', []));
 
+  const wrapperRef = useRef(null);
+  const [vw, setVw] = useState(390);
+  const [dragX, setDragX] = useState(0);
+  const [dragging, setDragging] = useState(false);
+  const startX = useRef(0);
+  const startY = useRef(0);
+  const lockedAxis = useRef(null);
+
+  useEffect(() => {
+    function measure() { if (wrapperRef.current) setVw(wrapperRef.current.clientWidth); }
+    measure();
+    window.addEventListener('resize', measure);
+    return () => window.removeEventListener('resize', measure);
+  }, []);
+
   function saveWorkouts(list) { setWorkouts(list); saveLocal('fittrack_workouts', list); }
   function saveMeals(list) { setMeals(list); saveLocal('fittrack_meals', list); }
   function saveWeights(list) { setWeights(list); saveLocal('fittrack_weights', list); }
 
+  const idx = TAB_ORDER.indexOf(tab);
+
+  function onTouchStart(e) {
+    startX.current = e.touches[0].clientX;
+    startY.current = e.touches[0].clientY;
+    lockedAxis.current = null;
+    setDragging(true);
+  }
+  function onTouchMove(e) {
+    const dx = e.touches[0].clientX - startX.current;
+    const dy = e.touches[0].clientY - startY.current;
+    if (!lockedAxis.current) {
+      if (Math.abs(dx) > 8 || Math.abs(dy) > 8) lockedAxis.current = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y';
+    }
+    if (lockedAxis.current === 'x') {
+      if (e.cancelable) e.preventDefault();
+      setDragX(dx);
+    }
+  }
+  function onTouchEnd() {
+    setDragging(false);
+    if (lockedAxis.current === 'x') {
+      const threshold = vw * 0.22;
+      if (dragX < -threshold && idx < TAB_ORDER.length - 1) setTab(TAB_ORDER[idx + 1]);
+      else if (dragX > threshold && idx > 0) setTab(TAB_ORDER[idx - 1]);
+    }
+    setDragX(0);
+    lockedAxis.current = null;
+  }
+
+  const offset = -idx * vw + (dragging && lockedAxis.current === 'x' ? dragX : 0);
+
   return (
     <AppBackground>
-      <div style={{ paddingBottom: 100, fontFamily: FONT }}>
-        {tab === 'workout' && <WorkoutTab workouts={workouts} save={saveWorkouts} />}
-        {tab === 'meal' && <MealTab meals={meals} save={saveMeals} />}
-        {tab === 'weight' && <WeightTab weights={weights} save={saveWeights} />}
-        {tab === 'stats' && <StatsTab workouts={workouts} meals={meals} weights={weights} />}
+      <div
+        ref={wrapperRef}
+        style={{ overflow: 'hidden', position: 'relative', fontFamily: FONT }}
+        onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
+        onTouchEnd={onTouchEnd}
+      >
+        <div style={{
+          display: 'flex',
+          transform: `translateX(${offset}px)`,
+          transition: dragging ? 'none' : 'transform 0.38s cubic-bezier(0.22,1,0.36,1)',
+          paddingBottom: 100,
+        }}>
+          <div style={{ width: vw, flexShrink: 0 }}><WorkoutTab workouts={workouts} save={saveWorkouts} /></div>
+          <div style={{ width: vw, flexShrink: 0 }}><MealTab meals={meals} save={saveMeals} /></div>
+          <div style={{ width: vw, flexShrink: 0 }}><WeightTab weights={weights} save={saveWeights} /></div>
+          <div style={{ width: vw, flexShrink: 0 }}><StatsTab workouts={workouts} meals={meals} weights={weights} /></div>
+        </div>
       </div>
       <TabBar tab={tab} setTab={setTab} />
     </AppBackground>
