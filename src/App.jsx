@@ -1,1457 +1,643 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
-import {
-  Dumbbell, UtensilsCrossed, Scale, BarChart3, Plus, X, TrendingUp,
-  TrendingDown, Minus, Sparkles, Loader2, Trash2, Calendar as CalendarIcon,
-  LineChart as LineChartIcon, Play, Square, Clock, RotateCcw, Check, Pencil,
-  ChevronRight
-} from 'lucide-react';
-import {
-  LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
-  ResponsiveContainer, ReferenceLine
-} from 'recharts';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
-const C = {
-  blue: '#0A84FF',
-  green: '#30D158',
-  orange: '#FF9F0A',
-  red: '#FF453A',
-  purple: '#5E5CE6',
-  pink: '#FF375F',
-  teal: '#64D2FF',
-  indigo: '#5E5CE6',
-  text: '#1C1C1E',
-  sub: '#6E6E73',
-  sep: 'rgba(60,60,67,0.13)',
-};
+const STORAGE_KEY = 'fittrack-v2-state';
 
-const FONT = "-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', sans-serif";
-
-const GLASS = {
-  background: 'rgba(255,255,255,0.55)',
-  backdropFilter: 'blur(28px) saturate(180%)',
-  WebkitBackdropFilter: 'blur(28px) saturate(180%)',
-  border: '1px solid rgba(255,255,255,0.6)',
-};
-
-const MUSCLE_GROUPS = [
-  { key: 'chest', label: '胸', color: C.red, exercises: ['杠铃卧推', '哑铃卧推', '上斜哑铃卧推', '下斜杠铃卧推', '蝴蝶机夹胸', '双杠臂屈伸', '绳索夹胸', '俯卧撑'] },
-  { key: 'back', label: '背', color: C.blue, exercises: ['引体向上', '高位下拉', '坐姿绳索划船', '杠铃划船', '单臂哑铃划船', '硬拉', 'T杠划船', '直臂下拉'] },
-  { key: 'shoulder', label: '肩', color: C.orange, exercises: ['杠铃推举', '哑铃肩推', '侧平举', '前平举', '反向飞鸟', '阿诺德推举', '直立划船', '耸肩'] },
-  { key: 'leg', label: '腿', color: C.purple, exercises: ['杠铃深蹲', '腿举机', '腿屈伸', '腿弯举', '保加利亚分腿蹲', '箭步蹲', '臀桥', '站姿提踵'] },
-  { key: 'arm', label: '臂', color: C.teal, exercises: ['杠铃弯举', '哑铃弯举', '锤式弯举', '绳索下压', '窄距卧推', '反手臂屈伸', '牧师凳弯举', '过头臂屈伸'] },
-  { key: 'core', label: '腹', color: C.pink, exercises: ['卷腹', '平板支撑', '悬垂举腿', '俄罗斯转体', '山羊挺身', '自行车卷腹', '侧平板支撑'] },
-  { key: 'cardio', label: '有氧', color: C.green, exercises: ['跑步', '动感单车', '游泳', '划船机', '椭圆机', '跳绳', '爬楼机'] },
+const muscleGroups = [
+  { id: 'chest', name: '胸部', exercises: ['卧推', '上斜卧推', '哑铃飞鸟', '俯卧撑', '双杠臂屈伸'] },
+  { id: 'back', name: '背部', exercises: ['引体向上', '高位下拉', '杠铃划船', '坐姿划船', '硬拉'] },
+  { id: 'shoulder', name: '肩部', exercises: ['推举', '侧平举', '前平举', '面拉', '反向飞鸟'] },
+  { id: 'legs', name: '腿部', exercises: ['深蹲', '腿举', '箭步蹲', '腿弯举', '小腿提踵'] },
+  { id: 'arms', name: '手臂', exercises: ['杠铃弯举', '哑铃弯举', '绳索下压', '臂屈伸', '锤式弯举'] },
+  { id: 'core', name: '核心', exercises: ['卷腹', '平板支撑', '俄罗斯转体', '举腿', '登山跑'] }
 ];
 
-const MEAL_TYPES = [
-  { key: '早餐', color: C.orange },
-  { key: '午餐', color: C.blue },
-  { key: '晚餐', color: C.purple },
-  { key: '加餐', color: C.green },
+const tabs = [
+  { id: 'home', label: '首页' },
+  { id: 'workout', label: '训练' },
+  { id: 'food', label: '饮食' },
+  { id: 'stats', label: '统计' },
+  { id: 'profile', label: '我的' }
 ];
 
-function uid() { return Math.random().toString(36).slice(2, 10); }
-function todayStr() { return new Date().toISOString().slice(0, 10); }
-function nowTime() { return new Date().toTimeString().slice(0, 5); }
-function fmtDate(d) {
-  const dt = new Date(d + 'T00:00:00');
-  return `${dt.getMonth() + 1}月${dt.getDate()}日`;
-}
-function fmtSec(s) {
-  const m = Math.floor(s / 60).toString().padStart(2, '0');
-  const sec = Math.floor(s % 60).toString().padStart(2, '0');
-  return `${m}:${sec}`;
+const defaultState = {
+  workouts: [
+    {
+      id: 'demo-1',
+      date: today(-2),
+      time: '19:20',
+      duration: 48,
+      exercises: [
+        { name: '卧推', group: '胸部', sets: 4, reps: 8, weight: 60 },
+        { name: '哑铃飞鸟', group: '胸部', sets: 3, reps: 12, weight: 14 }
+      ]
+    },
+    {
+      id: 'demo-2',
+      date: today(-1),
+      time: '18:45',
+      duration: 42,
+      exercises: [
+        { name: '引体向上', group: '背部', sets: 4, reps: 6, weight: 0 },
+        { name: '坐姿划船', group: '背部', sets: 3, reps: 10, weight: 45 }
+      ]
+    }
+  ],
+  weights: [{ id: 'w1', date: today(-1), time: '08:30', value: 70.4 }],
+  meals: [{ id: 'm1', date: today(), name: '鸡胸肉饭', calories: 620 }],
+  favorites: ['卧推', '深蹲', '引体向上']
+};
+
+function today(offset = 0) {
+  const date = new Date();
+  date.setDate(date.getDate() + offset);
+  return date.toISOString().slice(0, 10);
 }
 
-/* ---------- shared UI ---------- */
+function nowTime() {
+  return new Date().toTimeString().slice(0, 5);
+}
 
-function Header({ title, icon: Icon, color }) {
+function uid(prefix) {
+  return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function loadState() {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    return saved ? { ...defaultState, ...JSON.parse(saved) } : defaultState;
+  } catch {
+    return defaultState;
+  }
+}
+
+function App() {
+  const [state, setState] = useState(loadState);
+  const [activeTab, setActiveTab] = useState(0);
+  const [drag, setDrag] = useState({ x: 0, active: false });
+  const gesture = useRef({ x: 0, y: 0, locked: null });
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  }, [state]);
+
+  const setData = (updater) => setState((current) => updater(current));
+
+  const onPointerDown = (event) => {
+    gesture.current = { x: event.clientX, y: event.clientY, locked: null };
+    setDrag({ x: 0, active: true });
+  };
+
+  const onPointerMove = (event) => {
+    if (!drag.active) return;
+    const dx = event.clientX - gesture.current.x;
+    const dy = event.clientY - gesture.current.y;
+    if (!gesture.current.locked && Math.abs(dx) + Math.abs(dy) > 10) {
+      gesture.current.locked = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y';
+    }
+    if (gesture.current.locked === 'x') {
+      event.preventDefault();
+      setDrag({ x: Math.max(-120, Math.min(120, dx)), active: true });
+    }
+  };
+
+  const onPointerEnd = () => {
+    if (gesture.current.locked === 'x' && Math.abs(drag.x) > 60) {
+      setActiveTab((tab) => Math.max(0, Math.min(tabs.length - 1, tab + (drag.x < 0 ? 1 : -1))));
+    }
+    setDrag({ x: 0, active: false });
+  };
+
   return (
-    <div style={{ padding: '26px 20px 14px', display: 'flex', alignItems: 'center', gap: 12 }}>
-      <div style={{
-        width: 44, height: 44, borderRadius: 14, flexShrink: 0,
-        background: `linear-gradient(135deg, ${color}, ${color}AA)`,
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        boxShadow: `0 6px 16px ${color}4D`,
-      }}>
-        {Icon && <Icon size={22} color="#fff" strokeWidth={2.2} />}
-      </div>
-      <h1 style={{ fontSize: 28, fontWeight: 800, color: C.text, margin: 0, letterSpacing: -0.5, fontFamily: FONT }}>{title}</h1>
-    </div>
-  );
-}
+    <div className="app-shell">
+      <div className="phone">
+        <header className="topbar">
+          <div>
+            <p className="eyebrow">FitTrack V2</p>
+            <h1>{tabs[activeTab].label}</h1>
+          </div>
+          <div className="status-pill">{new Date().toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' })}</div>
+        </header>
 
-function Card({ children, style, onClick }) {
-  return (
-    <div onClick={onClick} style={{ ...GLASS, borderRadius: 24, overflow: 'hidden', boxShadow: '0 8px 30px rgba(31,38,135,0.08)', cursor: onClick ? 'pointer' : 'default', ...style }}>
-      {children}
-    </div>
-  );
-}
+        <nav className="tabs" aria-label="页面切换">
+          {tabs.map((tab, index) => (
+            <button key={tab.id} className={activeTab === index ? 'active' : ''} onClick={() => setActiveTab(index)}>
+              {tab.label}
+            </button>
+          ))}
+        </nav>
 
-function Row({ children, last, style, onClick }) {
-  return (
-    <div onClick={onClick} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '13px 16px', borderBottom: last ? 'none' : `0.5px solid ${C.sep}`, cursor: onClick ? 'pointer' : 'default', ...style }}>
-      {children}
-    </div>
-  );
-}
-
-function SegControl({ options, value, onChange }) {
-  return (
-    <div style={{ display: 'flex', ...GLASS, borderRadius: 14, padding: 3, gap: 2 }}>
-      {options.map(opt => (
-        <button
-          key={opt.key}
-          onClick={() => onChange(opt.key)}
-          style={{
-            flex: 1, border: 'none', borderRadius: 11, padding: '8px 10px',
-            background: value === opt.key ? 'rgba(255,255,255,0.9)' : 'transparent',
-            color: value === opt.key ? C.text : C.sub,
-            fontWeight: value === opt.key ? 600 : 500, fontSize: 13,
-            fontFamily: FONT, cursor: 'pointer',
-            boxShadow: value === opt.key ? '0 2px 8px rgba(0,0,0,0.08)' : 'none',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4,
-            transition: 'all 0.2s',
-          }}
+        <main
+          className="viewport"
+          onPointerDown={onPointerDown}
+          onPointerMove={onPointerMove}
+          onPointerUp={onPointerEnd}
+          onPointerCancel={onPointerEnd}
         >
-          {opt.icon && <opt.icon size={13} />}
-          {opt.label}
-        </button>
+          <div
+            className="pages"
+            style={{
+              transform: `translateX(calc(${-activeTab * 100}% + ${drag.x}px))`,
+              transition: drag.active ? 'none' : 'transform 520ms cubic-bezier(.2,.9,.18,1)'
+            }}
+          >
+            <Page><Dashboard state={state} setData={setData} setActiveTab={setActiveTab} /></Page>
+            <Page><Workout state={state} setData={setData} /></Page>
+            <Page><Food state={state} setData={setData} /></Page>
+            <Page><Stats state={state} /></Page>
+            <Page><Profile state={state} setData={setData} /></Page>
+          </div>
+        </main>
+      </div>
+    </div>
+  );
+}
+
+function Page({ children }) {
+  return <section className="page">{children}</section>;
+}
+
+function Dashboard({ state, setData, setActiveTab }) {
+  const latestWeight = state.weights.at(-1)?.value || '--';
+  const todayWorkout = state.workouts.find((item) => item.date === today());
+  const streak = getStreak(state.workouts);
+  const monthCount = state.workouts.filter((item) => item.date.startsWith(today().slice(0, 7))).length;
+
+  return (
+    <div className="screen">
+      <section className="hero-panel">
+        <div>
+          <p>今天状态</p>
+          <h2>{todayWorkout ? '训练已完成' : '准备开始训练'}</h2>
+        </div>
+        <button className="primary" onClick={() => setActiveTab(1)}>开始训练</button>
+      </section>
+      <div className="metric-grid">
+        <Metric label="当前体重" value={`${latestWeight} kg`} />
+        <Metric label="连续训练" value={`${streak} 天`} />
+        <Metric label="本月训练" value={`${monthCount} 次`} />
+        <Metric label="今日摄入" value={`${sumMeals(state.meals, today())} kcal`} />
+      </div>
+      <section className="panel">
+        <div className="section-title"><h3>今日目标</h3><span>{today()}</span></div>
+        <Checklist done={Boolean(todayWorkout)} label="完成一次训练" />
+        <Checklist done={sumMeals(state.meals, today()) > 0} label="记录饮食" />
+        <Checklist done={state.weights.some((item) => item.date === today())} label="记录体重" />
+      </section>
+      <QuickWeight setData={setData} />
+    </div>
+  );
+}
+
+function Workout({ state, setData }) {
+  const [session, setSession] = useState(null);
+  const [showExercise, setShowExercise] = useState(false);
+  const [finishOpen, setFinishOpen] = useState(false);
+  const [rest, setRest] = useState(0);
+
+  useEffect(() => {
+    if (!rest) return;
+    const timer = setInterval(() => setRest((value) => Math.max(0, value - 1)), 1000);
+    return () => clearInterval(timer);
+  }, [rest]);
+
+  const previous = state.workouts.at(-1);
+  const prs = useMemo(() => calculatePrs(state.workouts), [state.workouts]);
+
+  const addExercise = (exercise) => {
+    setSession((current) => ({
+      ...current,
+      exercises: [...current.exercises, { ...exercise, sets: 3, reps: 10, weight: 0 }]
+    }));
+    setShowExercise(false);
+  };
+
+  const updateExercise = (index, patch) => {
+    setSession((current) => ({
+      ...current,
+      exercises: current.exercises.map((item, itemIndex) => (itemIndex === index ? { ...item, ...patch } : item))
+    }));
+  };
+
+  const saveSession = () => {
+    const start = new Date(session.startedAt);
+    const duration = Math.max(1, Math.round((Date.now() - start.getTime()) / 60000));
+    const record = { ...session, id: uid('workout'), date: today(), time: nowTime(), duration };
+    setData((data) => ({ ...data, workouts: [...data.workouts, record] }));
+    setSession(null);
+    setFinishOpen(false);
+  };
+
+  const copyPrevious = () => {
+    if (!previous) return;
+    setSession({
+      startedAt: new Date().toISOString(),
+      exercises: previous.exercises.map((item) => ({ ...item }))
+    });
+  };
+
+  if (!session) {
+    return (
+      <div className="screen">
+        <section className="hero-panel workout-hero">
+          <div>
+            <p>训练记录</p>
+            <h2>开始一次新的训练</h2>
+          </div>
+          <button className="primary" onClick={() => setSession({ startedAt: new Date().toISOString(), exercises: [] })}>开始</button>
+        </section>
+        <div className="action-row">
+          <button className="ghost" onClick={copyPrevious} disabled={!previous}>复制上次训练</button>
+          <button className="ghost" onClick={() => setShowExercise(true)}>先选动作</button>
+        </div>
+        <section className="panel">
+          <div className="section-title"><h3>个人纪录</h3><span>PR</span></div>
+          {Object.entries(prs).slice(0, 5).map(([name, pr]) => (
+            <div className="list-row" key={name}>
+              <span>{name}</span>
+              <strong>{pr.weight}kg x {pr.reps}</strong>
+            </div>
+          ))}
+          {!Object.keys(prs).length && <Empty text="保存训练后会自动生成 PR" />}
+        </section>
+        <History workouts={state.workouts} />
+        {showExercise && <ExerciseModal onClose={() => setShowExercise(false)} onPick={addExercise} favorites={state.favorites} setData={setData} />}
+      </div>
+    );
+  }
+
+  return (
+    <div className="screen">
+      <section className="session-header">
+        <div>
+          <p>训练中</p>
+          <h2>{session.exercises.length ? `${session.exercises.length} 个动作` : '添加动作开始记录'}</h2>
+        </div>
+        {rest > 0 && <div className="rest-timer">{rest}s</div>}
+      </section>
+      <button className="wide-add" onClick={() => setShowExercise(true)}>添加训练动作</button>
+      <div className="exercise-list">
+        {session.exercises.map((exercise, index) => (
+          <ExerciseEditor
+            key={`${exercise.name}-${index}`}
+            exercise={exercise}
+            onChange={(patch) => updateExercise(index, patch)}
+            onRest={() => setRest(90)}
+          />
+        ))}
+      </div>
+      {!session.exercises.length && <Empty text="点击添加训练动作，选择部位和动作" />}
+      <div className="sticky-actions">
+        <button className="danger" onClick={() => setFinishOpen(true)}>结束训练</button>
+        <button className="primary" onClick={saveSession} disabled={!session.exercises.length}>保存训练</button>
+      </div>
+      {showExercise && <ExerciseModal onClose={() => setShowExercise(false)} onPick={addExercise} favorites={state.favorites} setData={setData} />}
+      {finishOpen && (
+        <Modal title="训练已结束" onClose={() => setFinishOpen(false)}>
+          <p className="modal-copy">你可以保存本次训练，也可以直接放弃，不会写入记录。</p>
+          <div className="modal-actions">
+            <button className="danger" onClick={() => { setSession(null); setFinishOpen(false); }}>放弃训练</button>
+            <button className="primary" onClick={saveSession} disabled={!session.exercises.length}>保存训练</button>
+          </div>
+        </Modal>
+      )}
+    </div>
+  );
+}
+
+function ExerciseEditor({ exercise, onChange, onRest }) {
+  return (
+    <article className="exercise-card">
+      <div className="section-title"><h3>{exercise.name}</h3><span>{exercise.group}</span></div>
+      <div className="picker-row">
+        <WheelPicker label="组数" value={exercise.sets} min={1} max={12} onChange={(sets) => onChange({ sets })} />
+        <WheelPicker label="次数" value={exercise.reps} min={1} max={30} onChange={(reps) => onChange({ reps })} />
+        <WheelPicker label="重量" value={exercise.weight} min={0} max={200} step={2.5} onChange={(weight) => onChange({ weight })} />
+      </div>
+      <button className="ghost compact" onClick={onRest}>完成一组，开始休息</button>
+    </article>
+  );
+}
+
+function WheelPicker({ label, value, min, max, step = 1, onChange }) {
+  const values = [];
+  for (let item = min; item <= max; item += step) values.push(Number(item.toFixed(1)));
+  return (
+    <label className="wheel">
+      <span>{label}</span>
+      <select value={value} onChange={(event) => onChange(Number(event.target.value))}>
+        {values.map((item) => <option key={item} value={item}>{item}</option>)}
+      </select>
+    </label>
+  );
+}
+
+function ExerciseModal({ onClose, onPick, favorites, setData }) {
+  const [group, setGroup] = useState(muscleGroups[0]);
+  const toggleFavorite = (name) => {
+    setData((data) => ({
+      ...data,
+      favorites: data.favorites.includes(name)
+        ? data.favorites.filter((item) => item !== name)
+        : [...data.favorites, name]
+    }));
+  };
+
+  return (
+    <Modal title="添加训练动作" onClose={onClose} wide>
+      <div className="exercise-picker">
+        <div className="group-list">
+          {muscleGroups.map((item) => (
+            <button key={item.id} className={group.id === item.id ? 'active' : ''} onClick={() => setGroup(item)}>{item.name}</button>
+          ))}
+        </div>
+        <div className="movement-list">
+          {group.exercises.map((name) => (
+            <div className="movement" key={name}>
+              <button onClick={() => onPick({ name, group: group.name })}>
+                <strong>{name}</strong>
+                <span>{favorites.includes(name) ? '常用动作' : '点击添加'}</span>
+              </button>
+              <button className="icon-button" onClick={() => toggleFavorite(name)}>{favorites.includes(name) ? '★' : '☆'}</button>
+            </div>
+          ))}
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+function Food({ state, setData }) {
+  const [name, setName] = useState('');
+  const [calories, setCalories] = useState(500);
+
+  const addMeal = () => {
+    if (!name.trim()) return;
+    setData((data) => ({ ...data, meals: [...data.meals, { id: uid('meal'), date: today(), name, calories: Number(calories) }] }));
+    setName('');
+  };
+
+  return (
+    <div className="screen">
+      <section className="panel">
+        <div className="section-title"><h3>记录饮食</h3><span>{sumMeals(state.meals, today())} kcal</span></div>
+        <input value={name} onChange={(event) => setName(event.target.value)} placeholder="例如：牛肉饭" />
+        <WheelPicker label="热量" value={calories} min={100} max={1500} step={50} onChange={setCalories} />
+        <button className="primary full" onClick={addMeal}>添加饮食</button>
+      </section>
+      <section className="panel">
+        <div className="section-title"><h3>今日饮食</h3><span>{today()}</span></div>
+        {state.meals.filter((meal) => meal.date === today()).map((meal) => (
+          <div className="list-row" key={meal.id}><span>{meal.name}</span><strong>{meal.calories} kcal</strong></div>
+        ))}
+      </section>
+    </div>
+  );
+}
+
+function Stats({ state }) {
+  const [modal, setModal] = useState(null);
+  const monthDays = getMonthDays(new Date());
+  const workoutDates = new Set(state.workouts.map((item) => item.date));
+  const totalDuration = state.workouts.reduce((sum, item) => sum + item.duration, 0);
+  const totalVolume = state.workouts.reduce((sum, workout) => sum + workout.exercises.reduce((s, e) => s + e.sets * e.reps * e.weight, 0), 0);
+
+  return (
+    <div className="screen stats-screen">
+      <div className="metric-grid">
+        <button className="metric clickable" onClick={() => setModal({ type: 'summary' })}><span>训练次数</span><strong>{state.workouts.length}</strong></button>
+        <button className="metric clickable" onClick={() => setModal({ type: 'duration' })}><span>累计时长</span><strong>{totalDuration} 分</strong></button>
+        <button className="metric clickable" onClick={() => setModal({ type: 'volume' })}><span>总容量</span><strong>{Math.round(totalVolume)} kg</strong></button>
+        <button className="metric clickable" onClick={() => setModal({ type: 'streak' })}><span>连续训练</span><strong>{getStreak(state.workouts)} 天</strong></button>
+      </div>
+
+      <section className="panel calendar-panel">
+        <div className="section-title"><h3>训练日历</h3><span>有训练会高亮</span></div>
+        <div className="calendar-weekdays">{['一', '二', '三', '四', '五', '六', '日'].map((day) => <span key={day}>{day}</span>)}</div>
+        <div className="calendar-grid">
+          {monthDays.map((day, index) => (
+            <button
+              key={`${day?.date || 'blank'}-${index}`}
+              className={day ? `day ${workoutDates.has(day.date) ? 'trained' : ''} ${day.date === today() ? 'today' : ''}` : 'day blank'}
+              onClick={() => day && setModal({ type: 'day', date: day.date })}
+              disabled={!day}
+            >
+              {day?.label}
+            </button>
+          ))}
+        </div>
+      </section>
+
+      <section className="panel chart-panel">
+        <div className="section-title"><h3>体重曲线</h3><span>含日期和时间</span></div>
+        <LineChart points={state.weights.map((item) => ({ label: `${item.date.slice(5)} ${item.time}`, value: item.value }))} />
+      </section>
+
+      <section className="panel">
+        <div className="section-title"><h3>训练热力图</h3><span>最近 28 天</span></div>
+        <div className="heatmap">
+          {Array.from({ length: 28 }).map((_, index) => {
+            const date = today(index - 27);
+            return <button key={date} className={workoutDates.has(date) ? 'hot' : ''} onClick={() => setModal({ type: 'day', date })} title={date} />;
+          })}
+        </div>
+      </section>
+
+      {modal && <StatsModal modal={modal} state={state} onClose={() => setModal(null)} />}
+    </div>
+  );
+}
+
+function StatsModal({ modal, state, onClose }) {
+  if (modal.type === 'day') {
+    const workouts = state.workouts.filter((item) => item.date === modal.date);
+    const meals = state.meals.filter((item) => item.date === modal.date);
+    const weights = state.weights.filter((item) => item.date === modal.date);
+    return (
+      <Modal title={`${modal.date} 详情`} onClose={onClose}>
+        <DetailBlock title="训练" empty="当天没有训练">
+          {workouts.map((workout) => <WorkoutSummary key={workout.id} workout={workout} />)}
+        </DetailBlock>
+        <DetailBlock title="饮食" empty="当天没有饮食记录">
+          {meals.map((meal) => <div className="list-row" key={meal.id}><span>{meal.name}</span><strong>{meal.calories} kcal</strong></div>)}
+        </DetailBlock>
+        <DetailBlock title="体重" empty="当天没有体重记录">
+          {weights.map((weight) => <div className="list-row" key={weight.id}><span>{weight.time}</span><strong>{weight.value} kg</strong></div>)}
+        </DetailBlock>
+      </Modal>
+    );
+  }
+
+  return (
+    <Modal title="统计详情" onClose={onClose}>
+      {state.workouts.slice().reverse().map((workout) => <WorkoutSummary key={workout.id} workout={workout} />)}
+      {!state.workouts.length && <Empty text="还没有训练记录" />}
+    </Modal>
+  );
+}
+
+function DetailBlock({ title, empty, children }) {
+  const hasContent = Array.isArray(children) ? children.length > 0 : Boolean(children);
+  return (
+    <div className="detail-block">
+      <h4>{title}</h4>
+      {hasContent ? children : <Empty text={empty} />}
+    </div>
+  );
+}
+
+function Profile({ state, setData }) {
+  return (
+    <div className="screen">
+      <QuickWeight setData={setData} />
+      <section className="panel">
+        <div className="section-title"><h3>体重记录</h3><span>日期 + 时间</span></div>
+        {state.weights.slice().reverse().map((item) => (
+          <div className="list-row" key={item.id}>
+            <span>{item.date} {item.time}</span>
+            <strong>{item.value} kg</strong>
+          </div>
+        ))}
+      </section>
+      <section className="panel">
+        <div className="section-title"><h3>常用动作</h3><span>{state.favorites.length}</span></div>
+        <div className="chip-row">{state.favorites.map((name) => <span className="chip" key={name}>{name}</span>)}</div>
+      </section>
+    </div>
+  );
+}
+
+function QuickWeight({ setData }) {
+  const [weight, setWeight] = useState(70);
+  const [date, setDate] = useState(today());
+  const [time, setTime] = useState(nowTime());
+
+  const add = () => {
+    setData((data) => ({ ...data, weights: [...data.weights, { id: uid('weight'), date, time, value: Number(weight) }] }));
+  };
+
+  return (
+    <section className="panel">
+      <div className="section-title"><h3>记录体重</h3><span>支持时间</span></div>
+      <div className="form-grid">
+        <input type="date" value={date} onChange={(event) => setDate(event.target.value)} />
+        <input type="time" value={time} onChange={(event) => setTime(event.target.value)} />
+      </div>
+      <WheelPicker label="体重 kg" value={weight} min={35} max={150} step={0.1} onChange={setWeight} />
+      <button className="primary full" onClick={add}>保存体重</button>
+    </section>
+  );
+}
+
+function LineChart({ points }) {
+  if (points.length < 2) return <Empty text="至少两条体重记录后显示曲线" />;
+  const min = Math.min(...points.map((p) => p.value));
+  const max = Math.max(...points.map((p) => p.value));
+  const range = max - min || 1;
+  const coords = points.map((point, index) => {
+    const x = 28 + (index * 244) / Math.max(1, points.length - 1);
+    const y = 170 - ((point.value - min) / range) * 120;
+    return { ...point, x, y };
+  });
+  return (
+    <svg className="chart" viewBox="0 0 300 210" role="img" aria-label="体重趋势图">
+      <path d="M28 20V170H286" />
+      <polyline points={coords.map((p) => `${p.x},${p.y}`).join(' ')} />
+      {coords.map((point) => <circle key={point.label} cx={point.x} cy={point.y} r="4" />)}
+      <text x="28" y="194">{points.at(-1).label}</text>
+      <text x="218" y="28">{points.at(-1).value}kg</text>
+    </svg>
+  );
+}
+
+function History({ workouts }) {
+  return (
+    <section className="panel">
+      <div className="section-title"><h3>最近训练</h3><span>{workouts.length} 次</span></div>
+      {workouts.slice().reverse().slice(0, 5).map((workout) => <WorkoutSummary key={workout.id} workout={workout} />)}
+    </section>
+  );
+}
+
+function WorkoutSummary({ workout }) {
+  return (
+    <div className="summary">
+      <div className="section-title"><h3>{workout.date} {workout.time}</h3><span>{workout.duration} 分钟</span></div>
+      {workout.exercises.map((exercise, index) => (
+        <div className="list-row" key={`${exercise.name}-${index}`}>
+          <span>{exercise.name}</span>
+          <strong>{exercise.sets} 组 x {exercise.reps} 次</strong>
+        </div>
       ))}
     </div>
   );
 }
 
-function Chip({ label, active, done, onClick, color, glass }) {
-  return (
-    <button
-      onClick={onClick}
-      style={{
-        border: active ? 'none' : '1px solid rgba(255,255,255,0.6)',
-        borderRadius: 22, padding: '9px 16px', fontSize: 14,
-        fontFamily: FONT, cursor: done ? 'default' : 'pointer', fontWeight: 500,
-        background: active ? (color || C.blue) : (done ? 'rgba(120,120,128,0.12)' : (glass ? 'rgba(255,255,255,0.45)' : '#EFEFF2')),
-        backdropFilter: !active && glass ? 'blur(20px)' : 'none',
-        color: active ? '#FFFFFF' : (done ? C.sub : C.text),
-        opacity: done ? 0.7 : 1,
-        transition: 'all 0.15s',
-        display: 'flex', alignItems: 'center', gap: 4,
-      }}
-    >
-      {done && <Check size={12} />}
-      {label}
-    </button>
-  );
+function Metric({ label, value }) {
+  return <div className="metric"><span>{label}</span><strong>{value}</strong></div>;
 }
 
-function PrimaryButton({ children, onClick, disabled, color }) {
-  return (
-    <button
-      onClick={onClick}
-      disabled={disabled}
-      style={{
-        width: '100%', border: 'none', borderRadius: 18, padding: '15px',
-        background: disabled ? 'rgba(120,120,128,0.16)' : (color || C.blue),
-        color: disabled ? C.sub : '#fff',
-        fontSize: 16, fontWeight: 600, fontFamily: FONT,
-        cursor: disabled ? 'not-allowed' : 'pointer',
-        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-        boxShadow: disabled ? 'none' : `0 6px 16px ${color || C.blue}55`,
-        transition: 'all 0.15s',
-      }}
-    >
-      {children}
-    </button>
-  );
-}
-
-function SmallButton({ children, onClick, color, outline }) {
-  return (
-    <button onClick={onClick} style={{
-      border: outline ? `1.5px solid ${color}` : 'none', borderRadius: 20, padding: '8px 14px',
-      background: outline ? 'transparent' : color, color: outline ? color : '#fff',
-      fontSize: 13, fontWeight: 600, fontFamily: FONT, cursor: 'pointer',
-      display: 'flex', alignItems: 'center', gap: 4,
-    }}>
-      {children}
-    </button>
-  );
+function Checklist({ done, label }) {
+  return <div className={`check ${done ? 'done' : ''}`}><span>{done ? '✓' : ''}</span>{label}</div>;
 }
 
 function Empty({ text }) {
-  return (
-    <div style={{ padding: '40px 20px', textAlign: 'center', color: C.sub, fontFamily: FONT, fontSize: 14 }}>
-      {text}
-    </div>
-  );
+  return <p className="empty">{text}</p>;
 }
 
-function AppBackground({ children }) {
+function Modal({ title, children, onClose, wide = false }) {
   return (
-    <div style={{
-      background: 'linear-gradient(160deg, #EAF4FF 0%, #DCE9FF 35%, #E4EEFF 65%, #F0F6FF 100%)',
-      minHeight: 640, maxWidth: 430, margin: '0 auto', position: 'relative',
-    }}>
-      {children}
-    </div>
-  );
-}
-
-const inputStyle = { border: `1px solid rgba(255,255,255,0.7)`, background: 'rgba(255,255,255,0.6)', borderRadius: 10, padding: '8px 10px', fontSize: 14, fontFamily: FONT, outline: 'none', boxSizing: 'border-box' };
-
-function Sheet({ title, onClose, children }) {
-  return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 200, display: 'flex', alignItems: 'flex-end' }}>
-      <div onClick={onClose} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(4px)' }} />
-      <div style={{
-        position: 'relative', width: '100%', maxWidth: 430, margin: '0 auto',
-        background: 'rgba(250,251,255,0.92)', backdropFilter: 'blur(30px) saturate(180%)', WebkitBackdropFilter: 'blur(30px) saturate(180%)',
-        borderRadius: '28px 28px 0 0', maxHeight: '82vh', overflowY: 'auto', padding: '14px 20px 30px', boxSizing: 'border-box',
-        boxShadow: '0 -8px 40px rgba(0,0,0,0.2)', animation: 'sheetUp 0.32s cubic-bezier(0.22,1,0.36,1)',
-      }}>
-        <style>{`@keyframes sheetUp { from { transform: translateY(100%);} to { transform: translateY(0);} }`}</style>
-        <div style={{ width: 36, height: 5, borderRadius: 3, background: 'rgba(120,120,128,0.3)', margin: '0 auto 14px' }} />
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-          <h2 style={{ fontSize: 19, fontWeight: 700, color: C.text, fontFamily: FONT, margin: 0 }}>{title}</h2>
-          <button onClick={onClose} style={{ border: 'none', background: 'rgba(120,120,128,0.16)', borderRadius: 14, width: 28, height: 28, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <X size={15} color={C.sub} />
-          </button>
+    <div className="modal-layer" role="dialog" aria-modal="true">
+      <button className="modal-backdrop" onClick={onClose} aria-label="关闭" />
+      <div className={`modal ${wide ? 'wide' : ''}`}>
+        <div className="modal-head">
+          <h2>{title}</h2>
+          <button className="close" onClick={onClose}>×</button>
         </div>
-        {children}
+        <div className="modal-body">{children}</div>
       </div>
     </div>
   );
 }
 
-/* ---------- Workout Tab ---------- */
+function getMonthDays(date) {
+  const year = date.getFullYear();
+  const month = date.getMonth();
+  const first = new Date(year, month, 1);
+  const last = new Date(year, month + 1, 0).getDate();
+  const offset = (first.getDay() + 6) % 7;
+  const days = Array.from({ length: offset }, () => null);
+  for (let day = 1; day <= last; day += 1) {
+    const value = new Date(year, month, day);
+    days.push({ label: day, date: value.toISOString().slice(0, 10) });
+  }
+  while (days.length % 7) days.push(null);
+  return days;
+}
 
-function WorkoutTab({ workouts, save }) {
-  const [date, setDate] = useState(todayStr());
-  const [time, setTime] = useState(nowTime());
-  const [showPicker, setShowPicker] = useState(false);
-  const [activeGroup, setActiveGroup] = useState(null);
-  const [pending, setPending] = useState([]); // chips clicked in current panel, not yet added
-  const [selected, setSelected] = useState([]); // exercises added to this session
-  const [custom, setCustom] = useState('');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searching, setSearching] = useState(false);
-  const [searchResults, setSearchResults] = useState([]);
-  const [searchError, setSearchError] = useState('');
-  const [searchPending, setSearchPending] = useState([]);
-  const [session, setSession] = useState({ running: false, startedAt: null, elapsedSec: 0, startTimeStr: null });
-  const [rest, setRest] = useState({ running: false, startedAt: null, elapsedSec: 0 });
-  const [editingId, setEditingId] = useState(null);
-  const [editDraft, setEditDraft] = useState(null);
-  const [, forceTick] = useState(0);
+function getStreak(workouts) {
+  const dates = new Set(workouts.map((item) => item.date));
+  let count = 0;
+  for (let offset = 0; offset > -365; offset -= 1) {
+    if (!dates.has(today(offset))) break;
+    count += 1;
+  }
+  return count;
+}
 
-  useEffect(() => {
-    const anyRunning = selected.some(e => e.timerRunning) || session.running || rest.running;
-    if (!anyRunning) return;
-    const id = setInterval(() => forceTick(t => t + 1), 1000);
-    return () => clearInterval(id);
-  }, [selected, session.running, rest.running]);
+function sumMeals(meals, date) {
+  return meals.filter((item) => item.date === date).reduce((sum, item) => sum + item.calories, 0);
+}
 
-  function addExercise(name, groupLabel, groupColor) {
-    if (selected.some(e => e.name === name)) return;
-    setSelected(s => [...s, {
-      id: uid(), name, group: groupLabel, color: groupColor,
-      sets: '3', reps: '12', durationSec: 0, timerRunning: false, startedAt: null,
-    }]);
-  }
-  function togglePending(name) {
-    if (selected.some(e => e.name === name)) return;
-    setPending(p => p.includes(name) ? p.filter(x => x !== name) : [...p, name]);
-  }
-  function confirmAddPending(group) {
-    pending.forEach(name => addExercise(name, group.label, group.color));
-    setPending([]);
-  }
-  function toggleSearchPending(name) {
-    if (selected.some(e => e.name === name)) return;
-    setSearchPending(p => p.includes(name) ? p.filter(x => x !== name) : [...p, name]);
-  }
-  function confirmAddSearchPending() {
-    searchPending.forEach(name => addExercise(name, 'AI推荐', C.purple));
-    setSearchPending([]);
-  }
-  async function runSearch() {
-    if (!searchQuery.trim()) return;
-    setSearching(true); setSearchError(''); setSearchResults([]);
-    try {
-      const list = await searchExercisesAI(searchQuery.trim());
-      setSearchResults(Array.isArray(list) ? list : []);
-    } catch (e) {
-      setSearchError('搜索失败，可以在上方"按部位选择"里手动添加');
-    } finally {
-      setSearching(false);
-    }
-  }
-  function closePicker() {
-    setShowPicker(false);
-    setActiveGroup(null);
-    setPending([]);
-    setSearchQuery('');
-    setSearchResults([]);
-    setSearchError('');
-    setSearchPending([]);
-  }
-  function addCustom() {
-    const name = custom.trim();
-    if (!name) return;
-    const g = MUSCLE_GROUPS.find(g => g.key === activeGroup);
-    addExercise(name, g ? g.label : '自定义', g ? g.color : C.sub);
-    setCustom('');
-  }
-  function updateEx(id, patch) {
-    setSelected(s => s.map(e => e.id === id ? { ...e, ...patch } : e));
-  }
-  function removeEx(id) {
-    setSelected(s => s.filter(e => e.id !== id));
-  }
-  function toggleTimer(id) {
-    setSelected(s => s.map(e => {
-      if (e.id !== id) return e;
-      if (!e.timerRunning) return { ...e, timerRunning: true, startedAt: Date.now() };
-      const elapsed = Math.floor((Date.now() - e.startedAt) / 1000);
-      return { ...e, timerRunning: false, startedAt: null, durationSec: e.durationSec + elapsed };
-    }));
-  }
-  function displayExDuration(e) {
-    if (e.timerRunning && e.startedAt) return e.durationSec + Math.floor((Date.now() - e.startedAt) / 1000);
-    return e.durationSec;
-  }
-
-  function toggleSession() {
-    if (!session.running) {
-      setSession({ running: true, startedAt: Date.now(), elapsedSec: 0, startTimeStr: nowTime() });
-    } else {
-      const elapsed = session.elapsedSec + Math.floor((Date.now() - session.startedAt) / 1000);
-      finalizeAndSave(elapsed, session.startTimeStr, nowTime());
-      setSession({ running: false, startedAt: null, elapsedSec: 0, startTimeStr: null });
-    }
-  }
-  function displaySession() {
-    if (session.running && session.startedAt) return session.elapsedSec + Math.floor((Date.now() - session.startedAt) / 1000);
-    return session.elapsedSec;
-  }
-  function toggleRest() {
-    setRest(r => {
-      if (!r.running) return { running: true, startedAt: Date.now(), elapsedSec: r.elapsedSec };
-      const elapsed = r.elapsedSec + Math.floor((Date.now() - r.startedAt) / 1000);
-      return { running: false, startedAt: null, elapsedSec: elapsed };
-    });
-  }
-  function resetRest() { setRest({ running: false, startedAt: null, elapsedSec: 0 }); }
-  function displayRest() {
-    if (rest.running && rest.startedAt) return rest.elapsedSec + Math.floor((Date.now() - rest.startedAt) / 1000);
-    return rest.elapsedSec;
-  }
-
-  function finalizeAndSave(totalSec, startTimeStr, endTimeStr) {
-    if (selected.length === 0) return;
-    const finalized = selected.map(e => {
-      if (e.timerRunning && e.startedAt) {
-        const elapsed = Math.floor((Date.now() - e.startedAt) / 1000);
-        return { ...e, durationSec: e.durationSec + elapsed, timerRunning: false, startedAt: null };
+function calculatePrs(workouts) {
+  const prs = {};
+  workouts.forEach((workout) => {
+    workout.exercises.forEach((exercise) => {
+      if (!prs[exercise.name] || exercise.weight > prs[exercise.name].weight) {
+        prs[exercise.name] = { weight: exercise.weight, reps: exercise.reps };
       }
-      return e;
     });
-    const entry = {
-      id: uid(), date, time, startTime: startTimeStr, endTime: endTimeStr, totalDurationSec: totalSec,
-      exercises: finalized.map(e => ({ name: e.name, group: e.group, color: e.color, sets: e.sets, reps: e.reps, durationSec: e.durationSec })),
-    };
-    save([entry, ...workouts]);
-    setSelected([]);
-    setActiveGroup(null);
-    setPending([]);
-    setRest({ running: false, startedAt: null, elapsedSec: 0 });
-  }
-
-  function removeWorkout(id) {
-    save(workouts.filter(w => w.id !== id));
-  }
-  function startEdit(w) {
-    setEditingId(w.id);
-    setEditDraft({ date: w.date, time: w.time, exercises: w.exercises.map(e => ({ ...e })) });
-  }
-  function cancelEdit() { setEditingId(null); setEditDraft(null); }
-  function saveEdit(id) {
-    save(workouts.map(w => w.id === id ? { ...w, date: editDraft.date, time: editDraft.time, exercises: editDraft.exercises } : w));
-    setEditingId(null); setEditDraft(null);
-  }
-  function updateDraftEx(idx, patch) {
-    setEditDraft(d => ({ ...d, exercises: d.exercises.map((e, i) => i === idx ? { ...e, ...patch } : e) }));
-  }
-  function removeDraftEx(idx) {
-    setEditDraft(d => ({ ...d, exercises: d.exercises.filter((_, i) => i !== idx) }));
-  }
-
-  const sorted = [...workouts].sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time));
-  const currentGroup = MUSCLE_GROUPS.find(g => g.key === activeGroup);
-
-  return (
-    <div>
-      <Header title="健身记录" icon={Dumbbell} color={C.green} />
-      <div style={{ padding: '0 20px' }}>
-        <Card style={{ marginBottom: 16 }}>
-          <Row>
-            <span style={{ fontSize: 15, color: C.text, fontFamily: FONT }}>日期</span>
-            <input type="date" value={date} onChange={e => setDate(e.target.value)}
-              style={{ border: 'none', background: 'transparent', fontSize: 15, fontFamily: FONT, color: C.blue, textAlign: 'right' }} />
-          </Row>
-          <Row last>
-            <span style={{ fontSize: 15, color: C.text, fontFamily: FONT }}>时间</span>
-            <input type="time" value={time} onChange={e => setTime(e.target.value)}
-              style={{ border: 'none', background: 'transparent', fontSize: 15, fontFamily: FONT, color: C.blue, textAlign: 'right' }} />
-          </Row>
-        </Card>
-
-        <div style={{ marginBottom: 16 }}>
-          <button onClick={() => setShowPicker(true)} style={{
-            width: '100%', border: '1.5px dashed rgba(10,132,255,0.4)', borderRadius: 18, padding: '16px',
-            background: 'rgba(10,132,255,0.06)', color: C.blue, fontSize: 15, fontWeight: 600, fontFamily: FONT,
-            cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-          }}>
-            <Plus size={20} /> 添加训练动作
-          </button>
-        </div>
-
-        {showPicker && (
-          <Sheet title="添加训练动作" onClose={closePicker}>
-            <p style={{ fontSize: 12, color: C.sub, margin: '0 4px 8px', fontFamily: FONT, textTransform: 'uppercase', letterSpacing: 0.3 }}>按部位选择</p>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
-              {MUSCLE_GROUPS.map(g => (
-                <Chip key={g.key} label={g.label} active={activeGroup === g.key} color={g.color} glass
-                  onClick={() => { setActiveGroup(activeGroup === g.key ? null : g.key); setPending([]); }} />
-              ))}
-            </div>
-
-            {currentGroup && (
-              <div style={{ ...GLASS, borderRadius: 18, padding: 14, marginBottom: 18 }}>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
-                  {currentGroup.exercises.map(ex => {
-                    const added = selected.some(e => e.name === ex);
-                    const isPending = pending.includes(ex);
-                    return (
-                      <Chip key={ex} label={ex} active={isPending} done={added} color={currentGroup.color} glass
-                        onClick={() => togglePending(ex)} />
-                    );
-                  })}
-                </div>
-                <div style={{ display: 'flex', gap: 8, marginBottom: pending.length > 0 ? 10 : 0 }}>
-                  <input
-                    value={custom}
-                    onChange={e => setCustom(e.target.value)}
-                    onKeyDown={e => e.key === 'Enter' && addCustom()}
-                    placeholder={`添加自定义${currentGroup.label}部动作`}
-                    style={{ flex: 1, ...GLASS, border: '1px solid rgba(255,255,255,0.7)', borderRadius: 12, padding: '9px 12px', fontSize: 13, fontFamily: FONT, outline: 'none' }}
-                  />
-                  <button onClick={addCustom} style={{ border: 'none', background: currentGroup.color, borderRadius: 12, width: 38, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <Plus size={17} color="#fff" />
-                  </button>
-                </div>
-                {pending.length > 0 && (
-                  <SmallButton onClick={() => confirmAddPending(currentGroup)} color={currentGroup.color}>
-                    <Plus size={14} /> 添加所选动作（{pending.length}）
-                  </SmallButton>
-                )}
-              </div>
-            )}
-
-            <div style={{ height: 1, background: C.sep, margin: '4px 0 18px' }} />
-
-            <p style={{ fontSize: 12, color: C.sub, margin: '0 4px 8px', fontFamily: FONT, textTransform: 'uppercase', letterSpacing: 0.3 }}>AI 搜索相似动作</p>
-            <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
-              <input
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && runSearch()}
-                placeholder="比如：适合肩膀的哑铃动作"
-                style={{ flex: 1, ...GLASS, border: '1px solid rgba(255,255,255,0.7)', borderRadius: 12, padding: '10px 12px', fontSize: 13, fontFamily: FONT, outline: 'none' }}
-              />
-              <button onClick={runSearch} disabled={!searchQuery.trim() || searching} style={{
-                border: 'none', background: (!searchQuery.trim() || searching) ? 'rgba(120,120,128,0.16)' : C.purple,
-                borderRadius: 12, width: 42, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}>
-                {searching ? <Loader2 size={17} color="#fff" style={{ animation: 'spin 1s linear infinite' }} /> : <Sparkles size={17} color="#fff" />}
-              </button>
-            </div>
-            {searchError && <div style={{ fontSize: 12, color: C.red, fontFamily: FONT, marginBottom: 10 }}>{searchError}</div>}
-            {searchResults.length > 0 && (
-              <div style={{ ...GLASS, borderRadius: 18, padding: 14 }}>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: searchPending.length > 0 ? 10 : 0 }}>
-                  {searchResults.map(name => {
-                    const added = selected.some(e => e.name === name);
-                    const isPending = searchPending.includes(name);
-                    return (
-                      <Chip key={name} label={name} active={isPending} done={added} color={C.purple} glass
-                        onClick={() => toggleSearchPending(name)} />
-                    );
-                  })}
-                </div>
-                {searchPending.length > 0 && (
-                  <SmallButton onClick={confirmAddSearchPending} color={C.purple}>
-                    <Plus size={14} /> 添加所选动作（{searchPending.length}）
-                  </SmallButton>
-                )}
-              </div>
-            )}
-
-            <div style={{ marginTop: 20 }}>
-              <PrimaryButton onClick={closePicker} color={C.blue}>完成</PrimaryButton>
-            </div>
-          </Sheet>
-        )}
-
-        {selected.length > 0 && (
-          <>
-            <p style={{ fontSize: 13, color: C.sub, margin: '0 4px 8px', fontFamily: FONT, textTransform: 'uppercase', letterSpacing: 0.3 }}>本次训练</p>
-
-            <Card style={{ marginBottom: 12 }}>
-              <div style={{ padding: 16 }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-                  <div>
-                    <div style={{ fontSize: 11, color: C.sub, fontFamily: FONT, marginBottom: 2 }}>总计时</div>
-                    <div style={{ fontSize: 26, fontWeight: 800, fontFamily: 'monospace', color: session.running ? C.green : C.text }}>
-                      {fmtSec(displaySession())}
-                    </div>
-                  </div>
-                  <SmallButton onClick={toggleSession} color={session.running ? C.red : C.green}>
-                    {session.running ? <Square size={12} fill="#fff" /> : <Play size={12} fill="#fff" />}
-                    {session.running ? '结束并保存' : '开始训练'}
-                  </SmallButton>
-                </div>
-
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(255,255,255,0.5)', borderRadius: 14, padding: '10px 14px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <Clock size={14} color={rest.running ? C.orange : C.sub} />
-                    <span style={{ fontSize: 12, color: C.sub, fontFamily: FONT }}>休息</span>
-                    <span style={{ fontSize: 16, fontWeight: 700, fontFamily: 'monospace', color: rest.running ? C.orange : C.text }}>
-                      {fmtSec(displayRest())}
-                    </span>
-                  </div>
-                  <div style={{ display: 'flex', gap: 6 }}>
-                    <button onClick={resetRest} style={{ border: 'none', background: 'rgba(120,120,128,0.16)', borderRadius: 16, width: 30, height: 30, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <RotateCcw size={13} color={C.sub} />
-                    </button>
-                    <button onClick={toggleRest} style={{ border: 'none', background: rest.running ? C.red : C.orange, borderRadius: 16, padding: '0 14px', height: 30, cursor: 'pointer', color: '#fff', fontSize: 12, fontWeight: 600, fontFamily: FONT, display: 'flex', alignItems: 'center', gap: 4 }}>
-                      {rest.running ? <Square size={11} fill="#fff" /> : <Play size={11} fill="#fff" />}
-                      休息
-                    </button>
-                  </div>
-                </div>
-                {!session.running && (
-                  <div style={{ fontSize: 11, color: C.sub, fontFamily: FONT, marginTop: 10 }}>点击"开始训练"计时，练完点"结束并保存"会自动记录本次开始/结束时间和总时长</div>
-                )}
-              </div>
-            </Card>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 16 }}>
-              {selected.map(e => (
-                <Card key={e.id}>
-                  <div style={{ padding: 14 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <span style={{ width: 8, height: 8, borderRadius: 4, background: e.color }} />
-                        <span style={{ fontSize: 15, fontWeight: 600, color: C.text, fontFamily: FONT }}>{e.name}</span>
-                        <span style={{ fontSize: 11, color: C.sub, fontFamily: FONT }}>{e.group}</span>
-                      </div>
-                      <button onClick={() => removeEx(e.id)} style={{ border: 'none', background: 'none', cursor: 'pointer' }}>
-                        <X size={16} color={C.sub} />
-                      </button>
-                    </div>
-
-                    <div style={{ display: 'flex', gap: 10, marginBottom: 12 }}>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: 11, color: C.sub, fontFamily: FONT, marginBottom: 4 }}>组数</div>
-                        <input type="number" value={e.sets} onChange={ev => updateEx(e.id, { sets: ev.target.value })}
-                          style={{ ...inputStyle, width: '100%', textAlign: 'center' }} />
-                      </div>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: 11, color: C.sub, fontFamily: FONT, marginBottom: 4 }}>次数</div>
-                        <input type="number" value={e.reps} onChange={ev => updateEx(e.id, { reps: ev.target.value })}
-                          style={{ ...inputStyle, width: '100%', textAlign: 'center' }} />
-                      </div>
-                    </div>
-
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(255,255,255,0.5)', borderRadius: 14, padding: '10px 14px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <Clock size={15} color={e.timerRunning ? e.color : C.sub} />
-                        <span style={{ fontSize: 18, fontWeight: 700, fontFamily: 'monospace', color: e.timerRunning ? e.color : C.text }}>
-                          {fmtSec(displayExDuration(e))}
-                        </span>
-                      </div>
-                      <button onClick={() => toggleTimer(e.id)}
-                        style={{
-                          border: 'none', borderRadius: 20, padding: '7px 16px', cursor: 'pointer',
-                          background: e.timerRunning ? C.red : e.color, color: '#fff',
-                          display: 'flex', alignItems: 'center', gap: 5, fontSize: 13, fontWeight: 600, fontFamily: FONT,
-                        }}>
-                        {e.timerRunning ? <Square size={12} fill="#fff" /> : <Play size={12} fill="#fff" />}
-                        {e.timerRunning ? '结束' : '开始'}
-                      </button>
-                    </div>
-                  </div>
-                </Card>
-              ))}
-            </div>
-          </>
-        )}
-
-        <p style={{ fontSize: 13, color: C.sub, margin: '0 4px 8px', fontFamily: FONT, textTransform: 'uppercase', letterSpacing: 0.3 }}>训练记录（点击可编辑）</p>
-        {sorted.length === 0 ? <Empty text="还没有记录，添加你的第一次训练吧" /> : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 24 }}>
-            {sorted.map(w => {
-              const isEditing = editingId === w.id;
-              const totalSec = (w.exercises || []).reduce((s, e) => s + (e.durationSec || 0), 0);
-              if (isEditing) {
-                return (
-                  <Card key={w.id}>
-                    <div style={{ padding: 14 }}>
-                      <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
-                        <input type="date" value={editDraft.date} onChange={e => setEditDraft(d => ({ ...d, date: e.target.value }))} style={{ ...inputStyle, flex: 1 }} />
-                        <input type="time" value={editDraft.time} onChange={e => setEditDraft(d => ({ ...d, time: e.target.value }))} style={{ ...inputStyle, flex: 1 }} />
-                      </div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 12 }}>
-                        {editDraft.exercises.map((ex, i) => (
-                          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(255,255,255,0.5)', borderRadius: 10, padding: 8 }}>
-                            <span style={{ fontSize: 13, fontFamily: FONT, flex: 1, color: C.text }}>{ex.name}</span>
-                            <input type="number" value={ex.sets} onChange={e => updateDraftEx(i, { sets: e.target.value })} style={{ ...inputStyle, width: 44, padding: '6px 4px', textAlign: 'center' }} />
-                            <span style={{ fontSize: 12, color: C.sub }}>组</span>
-                            <input type="number" value={ex.reps} onChange={e => updateDraftEx(i, { reps: e.target.value })} style={{ ...inputStyle, width: 44, padding: '6px 4px', textAlign: 'center' }} />
-                            <span style={{ fontSize: 12, color: C.sub }}>次</span>
-                            <button onClick={() => removeDraftEx(i)} style={{ border: 'none', background: 'none', cursor: 'pointer' }}><X size={14} color={C.sub} /></button>
-                          </div>
-                        ))}
-                      </div>
-                      <div style={{ display: 'flex', gap: 8 }}>
-                        <SmallButton onClick={() => saveEdit(w.id)} color={C.green}><Check size={13} /> 保存修改</SmallButton>
-                        <SmallButton onClick={cancelEdit} color={C.sub}>取消</SmallButton>
-                      </div>
-                    </div>
-                  </Card>
-                );
-              }
-              return (
-                <Card key={w.id} onClick={() => startEdit(w)}>
-                  <div style={{ padding: '14px 16px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-                      <div style={{ fontSize: 15, fontWeight: 600, color: C.text, fontFamily: FONT, display: 'flex', alignItems: 'center', gap: 6 }}>
-                        {fmtDate(w.date)} · {w.time}
-                        <Pencil size={12} color={C.sub} />
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        {w.totalDurationSec ? (
-                          <span style={{ fontSize: 12, color: C.green, fontFamily: FONT, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 3 }}>
-                            <Clock size={12} /> {fmtSec(w.totalDurationSec)}
-                          </span>
-                        ) : totalSec > 0 && (
-                          <span style={{ fontSize: 12, color: C.sub, fontFamily: FONT, display: 'flex', alignItems: 'center', gap: 3 }}>
-                            <Clock size={12} /> {fmtSec(totalSec)}
-                          </span>
-                        )}
-                        <button onClick={(ev) => { ev.stopPropagation(); removeWorkout(w.id); }} style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 2 }}>
-                          <Trash2 size={15} color={C.sub} />
-                        </button>
-                      </div>
-                    </div>
-                    {w.startTime && w.endTime && (
-                      <div style={{ fontSize: 11, color: C.sub, fontFamily: FONT, marginBottom: 8 }}>{w.startTime} - {w.endTime}</div>
-                    )}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                      {(w.exercises || []).map((ex, i) => (
-                        <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 13, fontFamily: FONT }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                            <span style={{ width: 7, height: 7, borderRadius: 4, background: ex.color || C.sub }} />
-                            <span style={{ color: C.text, fontWeight: 500 }}>{ex.name}</span>
-                          </div>
-                          <span style={{ color: C.sub }}>
-                            {ex.sets}组 x {ex.reps}次{ex.durationSec ? ` · ${fmtSec(ex.durationSec)}` : ''}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </Card>
-              );
-            })}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-async function searchExercisesAI(query) {
-  const response = await fetch('/api/search-exercises', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ query }),
   });
-  if (!response.ok) throw new Error('api not available');
-  return response.json();
+  return prs;
 }
 
-/* ---------- Meal Tab ---------- */
-
-async function callClaudeForCalories(description, mealType) {
-  const response = await fetch('/api/estimate-calories', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ description, mealType }),
-  });
-  if (!response.ok) throw new Error('api not available');
-  return response.json();
-}
-
-function MealTab({ meals, save }) {
-  const [date, setDate] = useState(todayStr());
-  const [time, setTime] = useState(nowTime());
-  const [mealType, setMealType] = useState('午餐');
-  const [desc, setDesc] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState(null);
-  const [error, setError] = useState('');
-  const [editingId, setEditingId] = useState(null);
-  const [editDraft, setEditDraft] = useState(null);
-
-  async function identify() {
-    if (!desc.trim()) return;
-    setLoading(true);
-    setError('');
-    setResult(null);
-    try {
-      const r = await callClaudeForCalories(desc, mealType);
-      setResult(r);
-    } catch (e) {
-      setError('识别失败，可以手动输入热量后保存');
-      setResult({ calories: 0, protein_g: 0, carbs_g: 0, fat_g: 0, suggestion: '' });
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  function submit() {
-    if (!result) return;
-    const entry = { id: uid(), date, time, mealType, description: desc, ...result };
-    save([entry, ...meals]);
-    setDesc(''); setResult(null); setError('');
-  }
-  function remove(id) {
-    save(meals.filter(m => m.id !== id));
-  }
-  function startEdit(m) {
-    setEditingId(m.id);
-    setEditDraft({ ...m });
-  }
-  function cancelEdit() { setEditingId(null); setEditDraft(null); }
-  function saveEdit() {
-    save(meals.map(m => m.id === editDraft.id ? { ...editDraft, calories: Number(editDraft.calories) } : m));
-    setEditingId(null); setEditDraft(null);
-  }
-
-  const grouped = useMemo(() => {
-    const g = {};
-    [...meals].sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time)).forEach(m => {
-      if (!g[m.date]) g[m.date] = [];
-      g[m.date].push(m);
-    });
-    return Object.entries(g);
-  }, [meals]);
-
-  return (
-    <div>
-      <Header title="饮食记录" icon={UtensilsCrossed} color={C.orange} />
-      <div style={{ padding: '0 20px' }}>
-        <Card style={{ marginBottom: 16 }}>
-          <Row>
-            <span style={{ fontSize: 15, color: C.text, fontFamily: FONT }}>日期</span>
-            <input type="date" value={date} onChange={e => setDate(e.target.value)}
-              style={{ border: 'none', background: 'transparent', fontSize: 15, fontFamily: FONT, color: C.blue, textAlign: 'right' }} />
-          </Row>
-          <Row last>
-            <span style={{ fontSize: 15, color: C.text, fontFamily: FONT }}>时间</span>
-            <input type="time" value={time} onChange={e => setTime(e.target.value)}
-              style={{ border: 'none', background: 'transparent', fontSize: 15, fontFamily: FONT, color: C.blue, textAlign: 'right' }} />
-          </Row>
-        </Card>
-
-        <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
-          {MEAL_TYPES.map(mt => (
-            <Chip key={mt.key} label={mt.key} active={mealType === mt.key} onClick={() => setMealType(mt.key)} color={mt.color} glass />
-          ))}
-        </div>
-
-        <textarea
-          value={desc}
-          onChange={e => setDesc(e.target.value)}
-          placeholder="描述这一餐吃了什么，例如：一碗牛肉面，加一个卤蛋，一杯豆浆"
-          rows={3}
-          style={{ width: '100%', ...GLASS, border: '1px solid rgba(255,255,255,0.7)', borderRadius: 16, padding: 12, fontSize: 14, fontFamily: FONT, outline: 'none', resize: 'none', boxSizing: 'border-box', marginBottom: 12 }}
-        />
-
-        <div style={{ marginBottom: 16 }}>
-          <PrimaryButton onClick={identify} disabled={!desc.trim() || loading} color={C.orange}>
-            {loading ? <Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} /> : <Sparkles size={18} />}
-            {loading ? 'AI 识别中…' : 'AI 识别热量'}
-          </PrimaryButton>
-          <style>{`@keyframes spin { from { transform: rotate(0deg);} to { transform: rotate(360deg);} }`}</style>
-        </div>
-
-        {result && (
-          <Card style={{ marginBottom: 16 }}>
-            <div style={{ padding: 16 }}>
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginBottom: 10 }}>
-                <span style={{ fontSize: 28, fontWeight: 800, color: C.orange, fontFamily: FONT }}>{result.calories}</span>
-                <span style={{ fontSize: 14, color: C.sub, fontFamily: FONT }}>大卡</span>
-              </div>
-              <div style={{ display: 'flex', gap: 16, marginBottom: 10 }}>
-                <span style={{ fontSize: 12, color: C.sub, fontFamily: FONT }}>蛋白质 {result.protein_g}g</span>
-                <span style={{ fontSize: 12, color: C.sub, fontFamily: FONT }}>碳水 {result.carbs_g}g</span>
-                <span style={{ fontSize: 12, color: C.sub, fontFamily: FONT }}>脂肪 {result.fat_g}g</span>
-              </div>
-              {result.suggestion && (
-                <div style={{ fontSize: 13, color: C.text, fontFamily: FONT, background: 'rgba(255,159,10,0.12)', padding: '8px 10px', borderRadius: 10, marginBottom: 12 }}>
-                  💡 {result.suggestion}
-                </div>
-              )}
-              {error && <div style={{ fontSize: 12, color: C.red, fontFamily: FONT, marginBottom: 8 }}>{error}</div>}
-              <PrimaryButton onClick={submit} color={C.orange}>保存这条记录</PrimaryButton>
-            </div>
-          </Card>
-        )}
-
-        <p style={{ fontSize: 13, color: C.sub, margin: '0 4px 8px', fontFamily: FONT, textTransform: 'uppercase', letterSpacing: 0.3 }}>饮食记录（点击可编辑）</p>
-        {grouped.length === 0 ? <Empty text="还没有记录，试着描述一顿饭并识别热量" /> : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 24 }}>
-            {grouped.map(([d, items]) => {
-              const total = items.reduce((s, m) => s + (m.calories || 0), 0);
-              return (
-                <div key={d}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0 4px 8px' }}>
-                    <span style={{ fontSize: 13, fontWeight: 600, color: C.text, fontFamily: FONT }}>{fmtDate(d)}</span>
-                    <span style={{ fontSize: 13, color: C.orange, fontWeight: 600, fontFamily: FONT }}>共 {total} 大卡</span>
-                  </div>
-                  <Card>
-                    {items.map((m, i) => {
-                      const isEditing = editingId === m.id;
-                      if (isEditing) {
-                        return (
-                          <div key={m.id} style={{ padding: 14, borderBottom: i === items.length - 1 ? 'none' : `0.5px solid ${C.sep}` }}>
-                            <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
-                              <input type="time" value={editDraft.time} onChange={e => setEditDraft(d => ({ ...d, time: e.target.value }))} style={{ ...inputStyle, flex: 1 }} />
-                              <input type="number" value={editDraft.calories} onChange={e => setEditDraft(d => ({ ...d, calories: e.target.value }))} style={{ ...inputStyle, width: 80 }} />
-                            </div>
-                            <textarea value={editDraft.description} onChange={e => setEditDraft(d => ({ ...d, description: e.target.value }))} rows={2}
-                              style={{ ...inputStyle, width: '100%', marginBottom: 8, resize: 'none' }} />
-                            <div style={{ display: 'flex', gap: 8 }}>
-                              <SmallButton onClick={saveEdit} color={C.green}><Check size={13} /> 保存</SmallButton>
-                              <SmallButton onClick={cancelEdit} color={C.sub}>取消</SmallButton>
-                            </div>
-                          </div>
-                        );
-                      }
-                      return (
-                        <Row key={m.id} last={i === items.length - 1} onClick={() => startEdit(m)}>
-                          <div>
-                            <div style={{ fontSize: 14, fontWeight: 600, color: C.text, fontFamily: FONT, display: 'flex', alignItems: 'center', gap: 5 }}>
-                              {m.mealType} · {m.time} <Pencil size={11} color={C.sub} />
-                            </div>
-                            <div style={{ fontSize: 13, color: C.sub, fontFamily: FONT, marginTop: 2 }}>{m.description}</div>
-                          </div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                            <span style={{ fontSize: 14, fontWeight: 600, color: C.orange, fontFamily: FONT }}>{m.calories} 大卡</span>
-                            <button onClick={(ev) => { ev.stopPropagation(); remove(m.id); }} style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 2 }}>
-                              <Trash2 size={15} color={C.sub} />
-                            </button>
-                          </div>
-                        </Row>
-                      );
-                    })}
-                  </Card>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-/* ---------- Weight Tab ---------- */
-
-function WeightTab({ weights, save }) {
-  const [date, setDate] = useState(todayStr());
-  const [weight, setWeight] = useState('');
-  const [editingId, setEditingId] = useState(null);
-  const [editDraft, setEditDraft] = useState(null);
-
-  function submit() {
-    const w = parseFloat(weight);
-    if (!w || w <= 0) return;
-    const entry = { id: uid(), date, weight: w };
-    const list = [...weights.filter(x => x.date !== date), entry].sort((a, b) => a.date.localeCompare(b.date));
-    save(list);
-    setWeight('');
-  }
-  function remove(id) {
-    save(weights.filter(w => w.id !== id));
-  }
-  function startEdit(w) { setEditingId(w.id); setEditDraft({ ...w }); }
-  function cancelEdit() { setEditingId(null); setEditDraft(null); }
-  function saveEdit() {
-    save(weights.map(w => w.id === editDraft.id ? { ...editDraft, weight: parseFloat(editDraft.weight) } : w).sort((a, b) => a.date.localeCompare(b.date)));
-    setEditingId(null); setEditDraft(null);
-  }
-
-  const sorted = [...weights].sort((a, b) => b.date.localeCompare(a.date));
-  const latest = sorted[0];
-  const prev = sorted[1];
-  const delta = latest && prev ? +(latest.weight - prev.weight).toFixed(1) : null;
-
-  return (
-    <div>
-      <Header title="体重记录" icon={Scale} color={C.blue} />
-      <div style={{ padding: '0 20px' }}>
-        <Card style={{ marginBottom: 16 }}>
-          <div style={{ padding: 22, textAlign: 'center' }}>
-            <div style={{ fontSize: 13, color: C.sub, fontFamily: FONT, marginBottom: 4 }}>最新体重</div>
-            <div style={{ fontSize: 42, fontWeight: 800, color: C.text, fontFamily: FONT }}>
-              {latest ? latest.weight : '--'} <span style={{ fontSize: 16, fontWeight: 500, color: C.sub }}>kg</span>
-            </div>
-            {delta !== null && (
-              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, marginTop: 6, fontSize: 13, fontFamily: FONT, color: delta > 0 ? C.red : delta < 0 ? C.green : C.sub }}>
-                {delta > 0 ? <TrendingUp size={14} /> : delta < 0 ? <TrendingDown size={14} /> : <Minus size={14} />}
-                {Math.abs(delta)} kg 较上次
-              </div>
-            )}
-          </div>
-        </Card>
-
-        <Card style={{ marginBottom: 16 }}>
-          <Row>
-            <span style={{ fontSize: 15, color: C.text, fontFamily: FONT }}>日期</span>
-            <input type="date" value={date} onChange={e => setDate(e.target.value)}
-              style={{ border: 'none', background: 'transparent', fontSize: 15, fontFamily: FONT, color: C.blue, textAlign: 'right' }} />
-          </Row>
-          <Row last>
-            <span style={{ fontSize: 15, color: C.text, fontFamily: FONT }}>体重 (kg)</span>
-            <input type="number" step="0.1" value={weight} onChange={e => setWeight(e.target.value)} placeholder="0.0"
-              style={{ border: 'none', background: 'transparent', fontSize: 15, fontFamily: FONT, color: C.blue, textAlign: 'right', width: 80 }} />
-          </Row>
-        </Card>
-
-        <div style={{ marginBottom: 24 }}>
-          <PrimaryButton onClick={submit} disabled={!weight}>
-            <Plus size={18} /> 保存体重
-          </PrimaryButton>
-        </div>
-
-        <p style={{ fontSize: 13, color: C.sub, margin: '0 4px 8px', fontFamily: FONT, textTransform: 'uppercase', letterSpacing: 0.3 }}>历史记录（点击可编辑）</p>
-        {sorted.length === 0 ? <Empty text="还没有记录，输入今天的体重吧" /> : (
-          <Card style={{ marginBottom: 24 }}>
-            {sorted.map((w, i) => {
-              const isEditing = editingId === w.id;
-              if (isEditing) {
-                return (
-                  <div key={w.id} style={{ padding: 14, borderBottom: i === sorted.length - 1 ? 'none' : `0.5px solid ${C.sep}` }}>
-                    <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
-                      <input type="date" value={editDraft.date} onChange={e => setEditDraft(d => ({ ...d, date: e.target.value }))} style={{ ...inputStyle, flex: 1 }} />
-                      <input type="number" step="0.1" value={editDraft.weight} onChange={e => setEditDraft(d => ({ ...d, weight: e.target.value }))} style={{ ...inputStyle, width: 80 }} />
-                    </div>
-                    <div style={{ display: 'flex', gap: 8 }}>
-                      <SmallButton onClick={saveEdit} color={C.green}><Check size={13} /> 保存</SmallButton>
-                      <SmallButton onClick={cancelEdit} color={C.sub}>取消</SmallButton>
-                    </div>
-                  </div>
-                );
-              }
-              return (
-                <Row key={w.id} last={i === sorted.length - 1} onClick={() => startEdit(w)}>
-                  <span style={{ fontSize: 14, color: C.text, fontFamily: FONT, display: 'flex', alignItems: 'center', gap: 5 }}>
-                    {fmtDate(w.date)} <Pencil size={11} color={C.sub} />
-                  </span>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <span style={{ fontSize: 14, fontWeight: 600, color: C.text, fontFamily: FONT }}>{w.weight} kg</span>
-                    <button onClick={(ev) => { ev.stopPropagation(); remove(w.id); }} style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 2 }}>
-                      <Trash2 size={15} color={C.sub} />
-                    </button>
-                  </div>
-                </Row>
-              );
-            })}
-          </Card>
-        )}
-      </div>
-    </div>
-  );
-}
-
-/* ---------- Stats Tab ---------- */
-
-function buildDayRange(days) {
-  const arr = [];
-  const today = new Date();
-  for (let i = days - 1; i >= 0; i--) {
-    const d = new Date(today);
-    d.setDate(d.getDate() - i);
-    arr.push(d.toISOString().slice(0, 10));
-  }
-  return arr;
-}
-
-function Heatmap({ dates, valueByDate, colorFn }) {
-  const weeks = useMemo(() => {
-    const w = [];
-    let cur = [];
-    const firstDow = new Date(dates[0] + 'T00:00:00').getDay();
-    for (let i = 0; i < firstDow; i++) cur.push(null);
-    dates.forEach(d => {
-      cur.push({ date: d, value: valueByDate[d] || 0 });
-      if (cur.length === 7) { w.push(cur); cur = []; }
-    });
-    if (cur.length) { while (cur.length < 7) cur.push(null); w.push(cur); }
-    return w;
-  }, [dates, valueByDate]);
-
-  return (
-    <div style={{ display: 'flex', gap: 4, overflowX: 'auto', padding: '4px 2px' }}>
-      {weeks.map((week, wi) => (
-        <div key={wi} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          {week.map((d, di) => d ? (
-            <div key={di} title={`${d.date}: ${d.value}`}
-              style={{ width: 14, height: 14, borderRadius: 5, background: colorFn(d.value) }} />
-          ) : <div key={di} style={{ width: 14, height: 14 }} />)}
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function workoutColor(v) {
-  if (v === 0) return 'rgba(60,60,67,0.1)';
-  if (v === 1) return 'rgba(48,209,88,0.35)';
-  if (v === 2) return 'rgba(48,209,88,0.65)';
-  return 'rgba(48,209,88,1)';
-}
-function mealColor(v) {
-  if (v === 0) return 'rgba(60,60,67,0.1)';
-  if (v < 1200) return 'rgba(255,159,10,0.3)';
-  if (v <= 2500) return 'rgba(255,159,10,0.65)';
-  return 'rgba(255,69,58,0.8)';
-}
-function weightColor(v) {
-  return v > 0 ? C.blue : 'rgba(60,60,67,0.1)';
-}
-
-function StatsTab({ workouts, meals, weights }) {
-  const [metric, setMetric] = useState('workout');
-  const [view, setView] = useState('calendar');
-  const [detail, setDetail] = useState(null);
-  const days = buildDayRange(70);
-  const days30 = buildDayRange(30);
-  const thisWeekDates = buildDayRange(7);
-
-  const workoutByDate = useMemo(() => {
-    const m = {};
-    workouts.forEach(w => { m[w.date] = (m[w.date] || 0) + 1; });
-    return m;
-  }, [workouts]);
-
-  const workoutDurationByDate = useMemo(() => {
-    const m = {};
-    workouts.forEach(w => { m[w.date] = (m[w.date] || 0) + (w.totalDurationSec || (w.exercises || []).reduce((s, e) => s + (e.durationSec || 0), 0)); });
-    return m;
-  }, [workouts]);
-
-  const mealByDate = useMemo(() => {
-    const m = {};
-    meals.forEach(x => { m[x.date] = (m[x.date] || 0) + (x.calories || 0); });
-    return m;
-  }, [meals]);
-
-  const weightByDate = useMemo(() => {
-    const m = {};
-    weights.forEach(w => { m[w.date] = w.weight; });
-    return m;
-  }, [weights]);
-
-  const workoutCurveData = days30.map(d => ({ date: d.slice(5), minutes: Math.round((workoutDurationByDate[d] || 0) / 60) }));
-  const mealCurveData = days30.map(d => ({ date: d.slice(5), calories: mealByDate[d] || 0 }));
-  const weightCurveData = [...weights].sort((a, b) => a.date.localeCompare(b.date)).map(w => ({ date: w.date.slice(5), weight: w.weight }));
-
-  const metricOptions = [
-    { key: 'workout', label: '健身', icon: Dumbbell },
-    { key: 'meal', label: '饮食', icon: UtensilsCrossed },
-    { key: 'weight', label: '体重', icon: Scale },
-  ];
-  const viewOptions = [
-    { key: 'calendar', label: '日历', icon: CalendarIcon },
-    { key: 'curve', label: '曲线', icon: LineChartIcon },
-  ];
-
-  return (
-    <div>
-      <Header title="统计" icon={BarChart3} color={C.indigo} />
-      <div style={{ padding: '0 20px' }}>
-        <div style={{ marginBottom: 12 }}>
-          <SegControl options={metricOptions} value={metric} onChange={setMetric} />
-        </div>
-        <div style={{ marginBottom: 16 }}>
-          <SegControl options={viewOptions} value={view} onChange={setView} />
-        </div>
-
-        <Card style={{ marginBottom: 20 }}>
-          <div style={{ padding: 16 }}>
-            {view === 'calendar' && metric === 'workout' && (
-              <>
-                <Heatmap dates={days} valueByDate={workoutByDate} colorFn={workoutColor} />
-                <Legend items={[['0次', 'rgba(60,60,67,0.1)'], ['1次', 'rgba(48,209,88,0.35)'], ['2次', 'rgba(48,209,88,0.65)'], ['3次+', 'rgba(48,209,88,1)']]} />
-              </>
-            )}
-            {view === 'calendar' && metric === 'meal' && (
-              <>
-                <Heatmap dates={days} valueByDate={mealByDate} colorFn={mealColor} />
-                <Legend items={[['未记录', 'rgba(60,60,67,0.1)'], ['<1200', 'rgba(255,159,10,0.3)'], ['1200-2500', 'rgba(255,159,10,0.65)'], ['>2500', 'rgba(255,69,58,0.8)']]} />
-              </>
-            )}
-            {view === 'calendar' && metric === 'weight' && (
-              <>
-                <Heatmap dates={days} valueByDate={weightByDate} colorFn={weightColor} />
-                <Legend items={[['未记录', 'rgba(60,60,67,0.1)'], ['已记录', C.blue]]} />
-              </>
-            )}
-
-            {view === 'curve' && metric === 'workout' && (
-              <div style={{ height: 220 }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={workoutCurveData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke={C.sep} vertical={false} />
-                    <XAxis dataKey="date" tick={{ fontSize: 10, fill: C.sub }} interval={4} />
-                    <YAxis tick={{ fontSize: 10, fill: C.sub }} allowDecimals={false} />
-                    <Tooltip formatter={(v) => [`${v} 分钟`, '训练时长']} />
-                    <Bar dataKey="minutes" fill={C.green} radius={[4, 4, 0, 0]} name="训练时长(分钟)" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            )}
-            {view === 'curve' && metric === 'meal' && (
-              <div style={{ height: 220 }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={mealCurveData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke={C.sep} vertical={false} />
-                    <XAxis dataKey="date" tick={{ fontSize: 10, fill: C.sub }} interval={4} />
-                    <YAxis tick={{ fontSize: 10, fill: C.sub }} />
-                    <Tooltip />
-                    <ReferenceLine y={2000} stroke={C.sub} strokeDasharray="4 4" />
-                    <Line type="monotone" dataKey="calories" stroke={C.orange} strokeWidth={2} dot={false} name="每日热量" />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            )}
-            {view === 'curve' && metric === 'weight' && (
-              <div style={{ height: 220 }}>
-                {weightCurveData.length === 0 ? <Empty text="还没有体重记录" /> : (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={weightCurveData}>
-                      <CartesianGrid strokeDasharray="3 3" stroke={C.sep} vertical={false} />
-                      <XAxis dataKey="date" tick={{ fontSize: 10, fill: C.sub }} />
-                      <YAxis tick={{ fontSize: 10, fill: C.sub }} domain={['dataMin - 1', 'dataMax + 1']} />
-                      <Tooltip />
-                      <Line type="monotone" dataKey="weight" stroke={C.blue} strokeWidth={2} dot={{ r: 3 }} name="体重" />
-                    </LineChart>
-                  </ResponsiveContainer>
-                )}
-              </div>
-            )}
-          </div>
-        </Card>
-
-        <SummaryRow workouts={workouts} meals={meals} weights={weights} onSelect={setDetail} />
-      </div>
-
-      {detail === 'workout' && (
-        <Sheet title="本周训练详情" onClose={() => setDetail(null)}>
-          {(() => {
-            const list = [...workouts].filter(w => thisWeekDates.includes(w.date)).sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time));
-            return list.length === 0 ? <Empty text="本周还没有训练记录" /> : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {list.map(w => (
-                  <div key={w.id} style={{ ...GLASS, borderRadius: 16, padding: '12px 14px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, fontWeight: 600, color: C.text, fontFamily: FONT, marginBottom: 4 }}>
-                      <span>{fmtDate(w.date)} · {w.time}</span>
-                      {w.totalDurationSec ? <span style={{ color: C.green }}>{fmtSec(w.totalDurationSec)}</span> : null}
-                    </div>
-                    <div style={{ fontSize: 12, color: C.sub, fontFamily: FONT }}>{(w.exercises || []).map(e => e.name).join('、')}</div>
-                  </div>
-                ))}
-              </div>
-            );
-          })()}
-        </Sheet>
-      )}
-
-      {detail === 'duration' && (
-        <Sheet title="本周训练时长详情" onClose={() => setDetail(null)}>
-          {(() => {
-            const byDay = {};
-            workouts.filter(w => thisWeekDates.includes(w.date)).forEach(w => {
-              byDay[w.date] = (byDay[w.date] || 0) + (w.totalDurationSec || (w.exercises || []).reduce((s, e) => s + (e.durationSec || 0), 0));
-            });
-            const rows = thisWeekDates.filter(d => byDay[d]).sort((a, b) => b.localeCompare(a));
-            return rows.length === 0 ? <Empty text="本周还没有训练时长记录" /> : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {rows.map(d => (
-                  <Row key={d} last style={{ ...GLASS, borderRadius: 14, marginBottom: 0 }}>
-                    <span style={{ fontSize: 14, color: C.text, fontFamily: FONT }}>{fmtDate(d)}</span>
-                    <span style={{ fontSize: 14, fontWeight: 600, color: C.teal, fontFamily: FONT }}>{fmtSec(byDay[d])}</span>
-                  </Row>
-                ))}
-              </div>
-            );
-          })()}
-        </Sheet>
-      )}
-
-      {detail === 'calories' && (
-        <Sheet title="每日热量详情" onClose={() => setDetail(null)}>
-          {(() => {
-            const byDay = {};
-            meals.forEach(m => { byDay[m.date] = (byDay[m.date] || 0) + (m.calories || 0); });
-            const rows = Object.keys(byDay).sort((a, b) => b.localeCompare(a)).slice(0, 14);
-            return rows.length === 0 ? <Empty text="还没有饮食记录" /> : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {rows.map(d => (
-                  <Row key={d} last style={{ ...GLASS, borderRadius: 14, marginBottom: 0 }}>
-                    <span style={{ fontSize: 14, color: C.text, fontFamily: FONT }}>{fmtDate(d)}</span>
-                    <span style={{ fontSize: 14, fontWeight: 600, color: C.orange, fontFamily: FONT }}>{byDay[d]} 大卡</span>
-                  </Row>
-                ))}
-              </div>
-            );
-          })()}
-        </Sheet>
-      )}
-
-      {detail === 'weight' && (
-        <Sheet title="体重变化详情" onClose={() => setDetail(null)}>
-          {(() => {
-            const list = [...weights].sort((a, b) => b.date.localeCompare(a.date));
-            return list.length === 0 ? <Empty text="还没有体重记录" /> : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {list.map((w, i) => {
-                  const next = list[i + 1];
-                  const delta = next ? +(w.weight - next.weight).toFixed(1) : null;
-                  return (
-                    <Row key={w.id} last style={{ ...GLASS, borderRadius: 14, marginBottom: 0 }}>
-                      <span style={{ fontSize: 14, color: C.text, fontFamily: FONT }}>{fmtDate(w.date)}</span>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <span style={{ fontSize: 14, fontWeight: 600, color: C.text, fontFamily: FONT }}>{w.weight} kg</span>
-                        {delta !== null && (
-                          <span style={{ fontSize: 12, fontFamily: FONT, color: delta > 0 ? C.red : delta < 0 ? C.green : C.sub }}>
-                            {delta > 0 ? '+' : ''}{delta}
-                          </span>
-                        )}
-                      </div>
-                    </Row>
-                  );
-                })}
-              </div>
-            );
-          })()}
-        </Sheet>
-      )}
-    </div>
-  );
-}
-
-function Legend({ items }) {
-  return (
-    <div style={{ display: 'flex', gap: 12, marginTop: 12, flexWrap: 'wrap' }}>
-      {items.map(([label, color]) => (
-        <span key={label} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: C.sub, fontFamily: FONT }}>
-          <span style={{ width: 10, height: 10, borderRadius: 4, background: color }} />
-          {label}
-        </span>
-      ))}
-    </div>
-  );
-}
-
-function SummaryRow({ workouts, meals, weights, onSelect }) {
-  const thisWeek = buildDayRange(7);
-  const weekWorkouts = workouts.filter(w => thisWeek.includes(w.date)).length;
-  const weekMinutes = Math.round(workouts.filter(w => thisWeek.includes(w.date)).reduce((s, w) => s + (w.totalDurationSec || (w.exercises || []).reduce((a, e) => a + (e.durationSec || 0), 0)), 0) / 60);
-  const avgCalories = (() => {
-    const days = {};
-    meals.forEach(m => { days[m.date] = (days[m.date] || 0) + (m.calories || 0); });
-    const vals = Object.values(days);
-    return vals.length ? Math.round(vals.reduce((a, b) => a + b, 0) / vals.length) : 0;
-  })();
-  const sorted = [...weights].sort((a, b) => a.date.localeCompare(b.date));
-  const weightChange = sorted.length >= 2 ? +(sorted[sorted.length - 1].weight - sorted[0].weight).toFixed(1) : null;
-
-  const items = [
-    { key: 'workout', label: '本周训练', value: `${weekWorkouts}次`, color: C.green },
-    { key: 'duration', label: '本周时长', value: `${weekMinutes}分`, color: C.teal },
-    { key: 'calories', label: '日均热量', value: avgCalories ? `${avgCalories}` : '--', color: C.orange },
-    { key: 'weight', label: '体重变化', value: weightChange !== null ? `${weightChange > 0 ? '+' : ''}${weightChange}kg` : '--', color: weightChange > 0 ? C.red : C.blue },
-  ];
-
-  return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, marginBottom: 24 }}>
-      {items.map(it => (
-        <Card key={it.label} onClick={() => onSelect(it.key)}>
-          <div style={{ padding: '12px 6px 8px', textAlign: 'center', position: 'relative' }}>
-            <div style={{ fontSize: 15, fontWeight: 700, color: it.color, fontFamily: FONT }}>{it.value}</div>
-            <div style={{ fontSize: 10, color: C.sub, fontFamily: FONT, marginTop: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1 }}>
-              {it.label}<ChevronRight size={10} color={C.sub} />
-            </div>
-          </div>
-        </Card>
-      ))}
-    </div>
-  );
-}
-
-/* ---------- Tab Bar ---------- */
-
-function TabBar({ tab, setTab }) {
-  const items = [
-    { key: 'workout', label: '健身', icon: Dumbbell },
-    { key: 'meal', label: '饮食', icon: UtensilsCrossed },
-    { key: 'weight', label: '体重', icon: Scale },
-    { key: 'stats', label: '统计', icon: BarChart3 },
-  ];
-  const idx = items.findIndex(it => it.key === tab);
-  return (
-    <div style={{
-      position: 'fixed', bottom: 18, left: 0, right: 0, maxWidth: 390, margin: '0 auto',
-      ...GLASS, borderRadius: 30,
-      display: 'flex', justifyContent: 'space-around',
-      padding: '10px 6px', zIndex: 50,
-      boxShadow: '0 12px 32px rgba(31,38,135,0.15)',
-    }}>
-      <div style={{
-        position: 'absolute', top: 8, bottom: 8,
-        left: `calc(${idx} * 25% + 6px)`, width: 'calc(25% - 12px)',
-        background: 'rgba(255,255,255,0.7)', borderRadius: 20,
-        boxShadow: '0 4px 14px rgba(10,132,255,0.15)',
-        transition: 'left 0.35s cubic-bezier(0.34,1.56,0.64,1)',
-      }} />
-      {items.map(it => {
-        const Icon = it.icon;
-        const active = tab === it.key;
-        return (
-          <button key={it.key} onClick={() => setTab(it.key)}
-            style={{
-              position: 'relative', zIndex: 1,
-              background: 'none', border: 'none', borderRadius: 20,
-              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, padding: '6px 16px', cursor: 'pointer',
-              flex: 1,
-            }}>
-            <Icon size={22} color={active ? C.blue : C.sub} strokeWidth={active ? 2.3 : 1.8}
-              style={{ transform: active ? 'scale(1.14) translateY(-1px)' : 'scale(1)', transition: 'transform 0.32s cubic-bezier(0.34,1.56,0.64,1), color 0.2s' }} />
-            <span style={{ fontSize: 10, fontWeight: active ? 600 : 500, color: active ? C.blue : C.sub, fontFamily: FONT, transition: 'color 0.2s' }}>{it.label}</span>
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
-/* ---------- Root ---------- */
-
-const TAB_ORDER = ['workout', 'meal', 'weight', 'stats'];
-
-function loadLocal(key, fallback) {
-  try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; } catch (e) { return fallback; }
-}
-function saveLocal(key, value) {
-  try { localStorage.setItem(key, JSON.stringify(value)); } catch (e) {}
-}
-
-export default function FitTrackApp() {
-  const [tab, setTab] = useState('workout');
-  const [workouts, setWorkouts] = useState(() => loadLocal('fittrack_workouts', []));
-  const [meals, setMeals] = useState(() => loadLocal('fittrack_meals', []));
-  const [weights, setWeights] = useState(() => loadLocal('fittrack_weights', []));
-
-  const wrapperRef = useRef(null);
-  const [vw, setVw] = useState(390);
-  const [dragX, setDragX] = useState(0);
-  const [dragging, setDragging] = useState(false);
-  const startX = useRef(0);
-  const startY = useRef(0);
-  const lockedAxis = useRef(null);
-
-  useEffect(() => {
-    function measure() { if (wrapperRef.current) setVw(wrapperRef.current.clientWidth); }
-    measure();
-    window.addEventListener('resize', measure);
-    return () => window.removeEventListener('resize', measure);
-  }, []);
-
-  function saveWorkouts(list) { setWorkouts(list); saveLocal('fittrack_workouts', list); }
-  function saveMeals(list) { setMeals(list); saveLocal('fittrack_meals', list); }
-  function saveWeights(list) { setWeights(list); saveLocal('fittrack_weights', list); }
-
-  const idx = TAB_ORDER.indexOf(tab);
-
-  function onTouchStart(e) {
-    startX.current = e.touches[0].clientX;
-    startY.current = e.touches[0].clientY;
-    lockedAxis.current = null;
-    setDragging(true);
-  }
-  function onTouchMove(e) {
-    const dx = e.touches[0].clientX - startX.current;
-    const dy = e.touches[0].clientY - startY.current;
-    if (!lockedAxis.current) {
-      if (Math.abs(dx) > 8 || Math.abs(dy) > 8) lockedAxis.current = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y';
-    }
-    if (lockedAxis.current === 'x') {
-      if (e.cancelable) e.preventDefault();
-      setDragX(dx);
-    }
-  }
-  function onTouchEnd() {
-    setDragging(false);
-    if (lockedAxis.current === 'x') {
-      const threshold = vw * 0.22;
-      if (dragX < -threshold && idx < TAB_ORDER.length - 1) setTab(TAB_ORDER[idx + 1]);
-      else if (dragX > threshold && idx > 0) setTab(TAB_ORDER[idx - 1]);
-    }
-    setDragX(0);
-    lockedAxis.current = null;
-  }
-
-  const offset = -idx * vw + (dragging && lockedAxis.current === 'x' ? dragX : 0);
-
-  return (
-    <AppBackground>
-      <div
-        ref={wrapperRef}
-        style={{ overflow: 'hidden', position: 'relative', fontFamily: FONT }}
-        onTouchStart={onTouchStart}
-        onTouchMove={onTouchMove}
-        onTouchEnd={onTouchEnd}
-      >
-        <div style={{
-          display: 'flex',
-          transform: `translateX(${offset}px)`,
-          transition: dragging ? 'none' : 'transform 0.38s cubic-bezier(0.22,1,0.36,1)',
-          paddingBottom: 100,
-        }}>
-          <div style={{ width: vw, flexShrink: 0 }}><WorkoutTab workouts={workouts} save={saveWorkouts} /></div>
-          <div style={{ width: vw, flexShrink: 0 }}><MealTab meals={meals} save={saveMeals} /></div>
-          <div style={{ width: vw, flexShrink: 0 }}><WeightTab weights={weights} save={saveWeights} /></div>
-          <div style={{ width: vw, flexShrink: 0 }}><StatsTab workouts={workouts} meals={meals} weights={weights} /></div>
-        </div>
-      </div>
-      <TabBar tab={tab} setTab={setTab} />
-    </AppBackground>
-  );
-}
+export default App;
