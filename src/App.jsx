@@ -1,51 +1,37 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import './App.css';
 
-const STORAGE_KEY = 'fittrack-v2-state';
-
-const muscleGroups = [
-  { id: 'chest', name: '胸部', exercises: ['卧推', '上斜卧推', '哑铃飞鸟', '俯卧撑', '双杠臂屈伸'] },
-  { id: 'back', name: '背部', exercises: ['引体向上', '高位下拉', '杠铃划船', '坐姿划船', '硬拉'] },
-  { id: 'shoulder', name: '肩部', exercises: ['推举', '侧平举', '前平举', '面拉', '反向飞鸟'] },
-  { id: 'legs', name: '腿部', exercises: ['深蹲', '腿举', '箭步蹲', '腿弯举', '小腿提踵'] },
-  { id: 'arms', name: '手臂', exercises: ['杠铃弯举', '哑铃弯举', '绳索下压', '臂屈伸', '锤式弯举'] },
-  { id: 'core', name: '核心', exercises: ['卷腹', '平板支撑', '俄罗斯转体', '举腿', '登山跑'] }
-];
+const C = {
+  blue: '#0A84FF',
+  green: '#30D158',
+  orange: '#FF9F0A',
+  red: '#FF453A',
+  purple: '#5E5CE6',
+  teal: '#64D2FF',
+  text: '#1C1C1E',
+  sub: '#6E6E73'
+};
 
 const tabs = [
-  { id: 'home', label: '首页' },
-  { id: 'workout', label: '训练' },
-  { id: 'food', label: '饮食' },
-  { id: 'stats', label: '统计' },
-  { id: 'profile', label: '我的' }
+  { key: 'workout', label: '健身', icon: '⌁' },
+  { key: 'meal', label: '饮食', icon: '◌' },
+  { key: 'weight', label: '体重', icon: '⌂' },
+  { key: 'stats', label: '统计', icon: '▣' }
 ];
 
-const defaultState = {
-  workouts: [
-    {
-      id: 'demo-1',
-      date: today(-2),
-      time: '19:20',
-      duration: 48,
-      exercises: [
-        { name: '卧推', group: '胸部', sets: 4, reps: 8, weight: 60 },
-        { name: '哑铃飞鸟', group: '胸部', sets: 3, reps: 12, weight: 14 }
-      ]
-    },
-    {
-      id: 'demo-2',
-      date: today(-1),
-      time: '18:45',
-      duration: 42,
-      exercises: [
-        { name: '引体向上', group: '背部', sets: 4, reps: 6, weight: 0 },
-        { name: '坐姿划船', group: '背部', sets: 3, reps: 10, weight: 45 }
-      ]
-    }
-  ],
-  weights: [{ id: 'w1', date: today(-1), time: '08:30', value: 70.4 }],
-  meals: [{ id: 'm1', date: today(), name: '鸡胸肉饭', calories: 620 }],
-  favorites: ['卧推', '深蹲', '引体向上']
-};
+const groups = [
+  { key: 'chest', label: '胸部', color: C.red, exercises: ['杠铃卧推', '哑铃卧推', '上斜卧推', '哑铃飞鸟', '绳索夹胸', '俯卧撑'] },
+  { key: 'back', label: '背部', color: C.blue, exercises: ['引体向上', '高位下拉', '杠铃划船', '坐姿划船', '单臂哑铃划船', '硬拉'] },
+  { key: 'shoulder', label: '肩部', color: C.orange, exercises: ['肩推', '侧平举', '前平举', '面拉', '反向飞鸟', '耸肩'] },
+  { key: 'leg', label: '腿部', color: C.purple, exercises: ['深蹲', '腿举', '箭步蹲', '腿弯举', '保加利亚分腿蹲', '小腿提踵'] },
+  { key: 'arm', label: '手臂', color: C.teal, exercises: ['杠铃弯举', '哑铃弯举', '锤式弯举', '绳索下压', '窄距卧推', '臂屈伸'] },
+  { key: 'core', label: '核心', color: '#FF375F', exercises: ['卷腹', '平板支撑', '悬垂举腿', '俄罗斯转体', '登山跑', '自行车卷腹'] },
+  { key: 'cardio', label: '有氧', color: C.green, exercises: ['跑步', '动感单车', '游泳', '划船机', '椭圆机', '跳绳'] }
+];
+
+function uid() {
+  return Math.random().toString(36).slice(2, 10);
+}
 
 function today(offset = 0) {
   const date = new Date();
@@ -57,541 +43,155 @@ function nowTime() {
   return new Date().toTimeString().slice(0, 5);
 }
 
-function uid(prefix) {
-  return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+function readLocal(key, fallback) {
+  try {
+    const value = localStorage.getItem(key);
+    return value ? JSON.parse(value) : fallback;
+  } catch {
+    return fallback;
+  }
 }
 
-function loadState() {
-  try {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    return saved ? { ...defaultState, ...JSON.parse(saved) } : defaultState;
-  } catch {
-    return defaultState;
-  }
+function writeLocal(key, value) {
+  localStorage.setItem(key, JSON.stringify(value));
+}
+
+function secondsLabel(seconds) {
+  const m = Math.floor(seconds / 60).toString().padStart(2, '0');
+  const s = Math.floor(seconds % 60).toString().padStart(2, '0');
+  return `${m}:${s}`;
+}
+
+function dateLabel(date) {
+  const d = new Date(`${date}T00:00:00`);
+  return `${d.getMonth() + 1}月${d.getDate()}日`;
 }
 
 function App() {
-  const [state, setState] = useState(loadState);
-  const [activeTab, setActiveTab] = useState(0);
-  const [drag, setDrag] = useState({ x: 0, active: false });
-  const gesture = useRef({ x: 0, y: 0, locked: null });
+  const [tab, setTab] = useState('workout');
+  const [workouts, setWorkouts] = useState(() => readLocal('fittrack_workouts', []));
+  const [meals, setMeals] = useState(() => readLocal('fittrack_meals', []));
+  const [weights, setWeights] = useState(() => readLocal('fittrack_weights', []));
+  const [favorites, setFavorites] = useState(() => readLocal('fittrack_favorites', ['杠铃卧推', '深蹲', '引体向上']));
+  const frame = useRef(null);
+  const start = useRef({ x: 0, y: 0, axis: null });
+  const [width, setWidth] = useState(390);
+  const [drag, setDrag] = useState(0);
+  const [dragging, setDragging] = useState(false);
+
+  useEffect(() => writeLocal('fittrack_workouts', workouts), [workouts]);
+  useEffect(() => writeLocal('fittrack_meals', meals), [meals]);
+  useEffect(() => writeLocal('fittrack_weights', weights), [weights]);
+  useEffect(() => writeLocal('fittrack_favorites', favorites), [favorites]);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  }, [state]);
+    const measure = () => frame.current && setWidth(frame.current.clientWidth);
+    measure();
+    window.addEventListener('resize', measure);
+    return () => window.removeEventListener('resize', measure);
+  }, []);
 
-  const setData = (updater) => setState((current) => updater(current));
+  const index = tabs.findIndex((item) => item.key === tab);
 
-  const onPointerDown = (event) => {
-    gesture.current = { x: event.clientX, y: event.clientY, locked: null };
-    setDrag({ x: 0, active: true });
+  const onTouchStart = (event) => {
+    start.current = { x: event.touches[0].clientX, y: event.touches[0].clientY, axis: null };
+    setDragging(true);
   };
 
-  const onPointerMove = (event) => {
-    if (!drag.active) return;
-    const dx = event.clientX - gesture.current.x;
-    const dy = event.clientY - gesture.current.y;
-    if (!gesture.current.locked && Math.abs(dx) + Math.abs(dy) > 10) {
-      gesture.current.locked = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y';
+  const onTouchMove = (event) => {
+    const dx = event.touches[0].clientX - start.current.x;
+    const dy = event.touches[0].clientY - start.current.y;
+    if (!start.current.axis && Math.abs(dx) + Math.abs(dy) > 12) {
+      start.current.axis = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y';
     }
-    if (gesture.current.locked === 'x') {
+    if (start.current.axis === 'x') {
       event.preventDefault();
-      setDrag({ x: Math.max(-120, Math.min(120, dx)), active: true });
+      setDrag(Math.max(-width * 0.42, Math.min(width * 0.42, dx)));
     }
   };
 
-  const onPointerEnd = () => {
-    if (gesture.current.locked === 'x' && Math.abs(drag.x) > 60) {
-      setActiveTab((tab) => Math.max(0, Math.min(tabs.length - 1, tab + (drag.x < 0 ? 1 : -1))));
+  const onTouchEnd = () => {
+    if (start.current.axis === 'x') {
+      if (drag < -width * 0.2 && index < tabs.length - 1) setTab(tabs[index + 1].key);
+      if (drag > width * 0.2 && index > 0) setTab(tabs[index - 1].key);
     }
-    setDrag({ x: 0, active: false });
+    setDragging(false);
+    setDrag(0);
+    start.current.axis = null;
   };
 
   return (
-    <div className="app-shell">
-      <div className="phone">
-        <header className="topbar">
-          <div>
-            <p className="eyebrow">FitTrack V2</p>
-            <h1>{tabs[activeTab].label}</h1>
-          </div>
-          <div className="status-pill">{new Date().toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' })}</div>
-        </header>
-
-        <nav className="tabs" aria-label="页面切换">
-          {tabs.map((tab, index) => (
-            <button key={tab.id} className={activeTab === index ? 'active' : ''} onClick={() => setActiveTab(index)}>
-              {tab.label}
-            </button>
-          ))}
-        </nav>
-
-        <main
-          className="viewport"
-          onPointerDown={onPointerDown}
-          onPointerMove={onPointerMove}
-          onPointerUp={onPointerEnd}
-          onPointerCancel={onPointerEnd}
+    <div className="app-bg">
+      <div
+        ref={frame}
+        className="app-frame"
+        onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
+        onTouchEnd={onTouchEnd}
+      >
+        <div
+          className="pages"
+          style={{
+            width: `${tabs.length * 100}%`,
+            transform: `translateX(${-index * width + drag}px)`,
+            transition: dragging ? 'none' : 'transform .44s cubic-bezier(.22,1,.36,1)'
+          }}
         >
-          <div
-            className="pages"
-            style={{
-              transform: `translateX(calc(${-activeTab * 100}% + ${drag.x}px))`,
-              transition: drag.active ? 'none' : 'transform 520ms cubic-bezier(.2,.9,.18,1)'
-            }}
-          >
-            <Page><Dashboard state={state} setData={setData} setActiveTab={setActiveTab} /></Page>
-            <Page><Workout state={state} setData={setData} /></Page>
-            <Page><Food state={state} setData={setData} /></Page>
-            <Page><Stats state={state} /></Page>
-            <Page><Profile state={state} setData={setData} /></Page>
-          </div>
-        </main>
+          <Page width={width}><WorkoutTab workouts={workouts} setWorkouts={setWorkouts} favorites={favorites} setFavorites={setFavorites} /></Page>
+          <Page width={width}><MealTab meals={meals} setMeals={setMeals} /></Page>
+          <Page width={width}><WeightTab weights={weights} setWeights={setWeights} /></Page>
+          <Page width={width}><StatsTab workouts={workouts} meals={meals} weights={weights} /></Page>
+        </div>
       </div>
+      <TabBar tab={tab} setTab={setTab} />
     </div>
   );
 }
 
-function Page({ children }) {
-  return <section className="page">{children}</section>;
+function Page({ width, children }) {
+  return <section className="page" style={{ width }}>{children}</section>;
 }
 
-function Dashboard({ state, setData, setActiveTab }) {
-  const latestWeight = state.weights.at(-1)?.value || '--';
-  const todayWorkout = state.workouts.find((item) => item.date === today());
-  const streak = getStreak(state.workouts);
-  const monthCount = state.workouts.filter((item) => item.date.startsWith(today().slice(0, 7))).length;
-
+function Header({ title, color, icon }) {
   return (
-    <div className="screen">
-      <section className="hero-panel">
-        <div>
-          <p>今天状态</p>
-          <h2>{todayWorkout ? '训练已完成' : '准备开始训练'}</h2>
-        </div>
-        <button className="primary" onClick={() => setActiveTab(1)}>开始训练</button>
-      </section>
-      <div className="metric-grid">
-        <Metric label="当前体重" value={`${latestWeight} kg`} />
-        <Metric label="连续训练" value={`${streak} 天`} />
-        <Metric label="本月训练" value={`${monthCount} 次`} />
-        <Metric label="今日摄入" value={`${sumMeals(state.meals, today())} kcal`} />
+    <header className="header">
+      <div className="header-icon" style={{ background: `linear-gradient(135deg, ${color}, ${color}AA)` }}>{icon}</div>
+      <div>
+        <p>FitTrack</p>
+        <h1>{title}</h1>
       </div>
-      <section className="panel">
-        <div className="section-title"><h3>今日目标</h3><span>{today()}</span></div>
-        <Checklist done={Boolean(todayWorkout)} label="完成一次训练" />
-        <Checklist done={sumMeals(state.meals, today()) > 0} label="记录饮食" />
-        <Checklist done={state.weights.some((item) => item.date === today())} label="记录体重" />
-      </section>
-      <QuickWeight setData={setData} />
-    </div>
+    </header>
   );
 }
 
-function Workout({ state, setData }) {
-  const [session, setSession] = useState(null);
-  const [showExercise, setShowExercise] = useState(false);
-  const [finishOpen, setFinishOpen] = useState(false);
-  const [rest, setRest] = useState(0);
-
-  useEffect(() => {
-    if (!rest) return;
-    const timer = setInterval(() => setRest((value) => Math.max(0, value - 1)), 1000);
-    return () => clearInterval(timer);
-  }, [rest]);
-
-  const previous = state.workouts.at(-1);
-  const prs = useMemo(() => calculatePrs(state.workouts), [state.workouts]);
-
-  const addExercise = (exercise) => {
-    setSession((current) => ({
-      ...current,
-      exercises: [...current.exercises, { ...exercise, sets: 3, reps: 10, weight: 0 }]
-    }));
-    setShowExercise(false);
-  };
-
-  const updateExercise = (index, patch) => {
-    setSession((current) => ({
-      ...current,
-      exercises: current.exercises.map((item, itemIndex) => (itemIndex === index ? { ...item, ...patch } : item))
-    }));
-  };
-
-  const saveSession = () => {
-    const start = new Date(session.startedAt);
-    const duration = Math.max(1, Math.round((Date.now() - start.getTime()) / 60000));
-    const record = { ...session, id: uid('workout'), date: today(), time: nowTime(), duration };
-    setData((data) => ({ ...data, workouts: [...data.workouts, record] }));
-    setSession(null);
-    setFinishOpen(false);
-  };
-
-  const copyPrevious = () => {
-    if (!previous) return;
-    setSession({
-      startedAt: new Date().toISOString(),
-      exercises: previous.exercises.map((item) => ({ ...item }))
-    });
-  };
-
-  if (!session) {
-    return (
-      <div className="screen">
-        <section className="hero-panel workout-hero">
-          <div>
-            <p>训练记录</p>
-            <h2>开始一次新的训练</h2>
-          </div>
-          <button className="primary" onClick={() => setSession({ startedAt: new Date().toISOString(), exercises: [] })}>开始</button>
-        </section>
-        <div className="action-row">
-          <button className="ghost" onClick={copyPrevious} disabled={!previous}>复制上次训练</button>
-          <button className="ghost" onClick={() => setShowExercise(true)}>先选动作</button>
-        </div>
-        <section className="panel">
-          <div className="section-title"><h3>个人纪录</h3><span>PR</span></div>
-          {Object.entries(prs).slice(0, 5).map(([name, pr]) => (
-            <div className="list-row" key={name}>
-              <span>{name}</span>
-              <strong>{pr.weight}kg x {pr.reps}</strong>
-            </div>
-          ))}
-          {!Object.keys(prs).length && <Empty text="保存训练后会自动生成 PR" />}
-        </section>
-        <History workouts={state.workouts} />
-        {showExercise && <ExerciseModal onClose={() => setShowExercise(false)} onPick={addExercise} favorites={state.favorites} setData={setData} />}
-      </div>
-    );
-  }
-
-  return (
-    <div className="screen">
-      <section className="session-header">
-        <div>
-          <p>训练中</p>
-          <h2>{session.exercises.length ? `${session.exercises.length} 个动作` : '添加动作开始记录'}</h2>
-        </div>
-        {rest > 0 && <div className="rest-timer">{rest}s</div>}
-      </section>
-      <button className="wide-add" onClick={() => setShowExercise(true)}>添加训练动作</button>
-      <div className="exercise-list">
-        {session.exercises.map((exercise, index) => (
-          <ExerciseEditor
-            key={`${exercise.name}-${index}`}
-            exercise={exercise}
-            onChange={(patch) => updateExercise(index, patch)}
-            onRest={() => setRest(90)}
-          />
-        ))}
-      </div>
-      {!session.exercises.length && <Empty text="点击添加训练动作，选择部位和动作" />}
-      <div className="sticky-actions">
-        <button className="danger" onClick={() => setFinishOpen(true)}>结束训练</button>
-        <button className="primary" onClick={saveSession} disabled={!session.exercises.length}>保存训练</button>
-      </div>
-      {showExercise && <ExerciseModal onClose={() => setShowExercise(false)} onPick={addExercise} favorites={state.favorites} setData={setData} />}
-      {finishOpen && (
-        <Modal title="训练已结束" onClose={() => setFinishOpen(false)}>
-          <p className="modal-copy">你可以保存本次训练，也可以直接放弃，不会写入记录。</p>
-          <div className="modal-actions">
-            <button className="danger" onClick={() => { setSession(null); setFinishOpen(false); }}>放弃训练</button>
-            <button className="primary" onClick={saveSession} disabled={!session.exercises.length}>保存训练</button>
-          </div>
-        </Modal>
-      )}
-    </div>
-  );
+function Card({ children, onClick, className = '' }) {
+  return <div className={`card ${className}`} onClick={onClick}>{children}</div>;
 }
 
-function ExerciseEditor({ exercise, onChange, onRest }) {
-  return (
-    <article className="exercise-card">
-      <div className="section-title"><h3>{exercise.name}</h3><span>{exercise.group}</span></div>
-      <div className="picker-row">
-        <WheelPicker label="组数" value={exercise.sets} min={1} max={12} onChange={(sets) => onChange({ sets })} />
-        <WheelPicker label="次数" value={exercise.reps} min={1} max={30} onChange={(reps) => onChange({ reps })} />
-        <WheelPicker label="重量" value={exercise.weight} min={0} max={200} step={2.5} onChange={(weight) => onChange({ weight })} />
-      </div>
-      <button className="ghost compact" onClick={onRest}>完成一组，开始休息</button>
-    </article>
-  );
+function Row({ children }) {
+  return <div className="row">{children}</div>;
 }
 
-function WheelPicker({ label, value, min, max, step = 1, onChange }) {
-  const values = [];
-  for (let item = min; item <= max; item += step) values.push(Number(item.toFixed(1)));
-  return (
-    <label className="wheel">
-      <span>{label}</span>
-      <select value={value} onChange={(event) => onChange(Number(event.target.value))}>
-        {values.map((item) => <option key={item} value={item}>{item}</option>)}
-      </select>
-    </label>
-  );
+function PrimaryButton({ children, onClick, color = C.blue, disabled }) {
+  return <button className="primary-btn" disabled={disabled} onClick={onClick} style={{ background: disabled ? 'rgba(120,120,128,.18)' : color }}>{children}</button>;
 }
 
-function ExerciseModal({ onClose, onPick, favorites, setData }) {
-  const [group, setGroup] = useState(muscleGroups[0]);
-  const toggleFavorite = (name) => {
-    setData((data) => ({
-      ...data,
-      favorites: data.favorites.includes(name)
-        ? data.favorites.filter((item) => item !== name)
-        : [...data.favorites, name]
-    }));
-  };
-
-  return (
-    <Modal title="添加训练动作" onClose={onClose} wide>
-      <div className="exercise-picker">
-        <div className="group-list">
-          {muscleGroups.map((item) => (
-            <button key={item.id} className={group.id === item.id ? 'active' : ''} onClick={() => setGroup(item)}>{item.name}</button>
-          ))}
-        </div>
-        <div className="movement-list">
-          {group.exercises.map((name) => (
-            <div className="movement" key={name}>
-              <button onClick={() => onPick({ name, group: group.name })}>
-                <strong>{name}</strong>
-                <span>{favorites.includes(name) ? '常用动作' : '点击添加'}</span>
-              </button>
-              <button className="icon-button" onClick={() => toggleFavorite(name)}>{favorites.includes(name) ? '★' : '☆'}</button>
-            </div>
-          ))}
-        </div>
-      </div>
-    </Modal>
-  );
-}
-
-function Food({ state, setData }) {
-  const [name, setName] = useState('');
-  const [calories, setCalories] = useState(500);
-
-  const addMeal = () => {
-    if (!name.trim()) return;
-    setData((data) => ({ ...data, meals: [...data.meals, { id: uid('meal'), date: today(), name, calories: Number(calories) }] }));
-    setName('');
-  };
-
-  return (
-    <div className="screen">
-      <section className="panel">
-        <div className="section-title"><h3>记录饮食</h3><span>{sumMeals(state.meals, today())} kcal</span></div>
-        <input value={name} onChange={(event) => setName(event.target.value)} placeholder="例如：牛肉饭" />
-        <WheelPicker label="热量" value={calories} min={100} max={1500} step={50} onChange={setCalories} />
-        <button className="primary full" onClick={addMeal}>添加饮食</button>
-      </section>
-      <section className="panel">
-        <div className="section-title"><h3>今日饮食</h3><span>{today()}</span></div>
-        {state.meals.filter((meal) => meal.date === today()).map((meal) => (
-          <div className="list-row" key={meal.id}><span>{meal.name}</span><strong>{meal.calories} kcal</strong></div>
-        ))}
-      </section>
-    </div>
-  );
-}
-
-function Stats({ state }) {
-  const [modal, setModal] = useState(null);
-  const monthDays = getMonthDays(new Date());
-  const workoutDates = new Set(state.workouts.map((item) => item.date));
-  const totalDuration = state.workouts.reduce((sum, item) => sum + item.duration, 0);
-  const totalVolume = state.workouts.reduce((sum, workout) => sum + workout.exercises.reduce((s, e) => s + e.sets * e.reps * e.weight, 0), 0);
-
-  return (
-    <div className="screen stats-screen">
-      <div className="metric-grid">
-        <button className="metric clickable" onClick={() => setModal({ type: 'summary' })}><span>训练次数</span><strong>{state.workouts.length}</strong></button>
-        <button className="metric clickable" onClick={() => setModal({ type: 'duration' })}><span>累计时长</span><strong>{totalDuration} 分</strong></button>
-        <button className="metric clickable" onClick={() => setModal({ type: 'volume' })}><span>总容量</span><strong>{Math.round(totalVolume)} kg</strong></button>
-        <button className="metric clickable" onClick={() => setModal({ type: 'streak' })}><span>连续训练</span><strong>{getStreak(state.workouts)} 天</strong></button>
-      </div>
-
-      <section className="panel calendar-panel">
-        <div className="section-title"><h3>训练日历</h3><span>有训练会高亮</span></div>
-        <div className="calendar-weekdays">{['一', '二', '三', '四', '五', '六', '日'].map((day) => <span key={day}>{day}</span>)}</div>
-        <div className="calendar-grid">
-          {monthDays.map((day, index) => (
-            <button
-              key={`${day?.date || 'blank'}-${index}`}
-              className={day ? `day ${workoutDates.has(day.date) ? 'trained' : ''} ${day.date === today() ? 'today' : ''}` : 'day blank'}
-              onClick={() => day && setModal({ type: 'day', date: day.date })}
-              disabled={!day}
-            >
-              {day?.label}
-            </button>
-          ))}
-        </div>
-      </section>
-
-      <section className="panel chart-panel">
-        <div className="section-title"><h3>体重曲线</h3><span>含日期和时间</span></div>
-        <LineChart points={state.weights.map((item) => ({ label: `${item.date.slice(5)} ${item.time}`, value: item.value }))} />
-      </section>
-
-      <section className="panel">
-        <div className="section-title"><h3>训练热力图</h3><span>最近 28 天</span></div>
-        <div className="heatmap">
-          {Array.from({ length: 28 }).map((_, index) => {
-            const date = today(index - 27);
-            return <button key={date} className={workoutDates.has(date) ? 'hot' : ''} onClick={() => setModal({ type: 'day', date })} title={date} />;
-          })}
-        </div>
-      </section>
-
-      {modal && <StatsModal modal={modal} state={state} onClose={() => setModal(null)} />}
-    </div>
-  );
-}
-
-function StatsModal({ modal, state, onClose }) {
-  if (modal.type === 'day') {
-    const workouts = state.workouts.filter((item) => item.date === modal.date);
-    const meals = state.meals.filter((item) => item.date === modal.date);
-    const weights = state.weights.filter((item) => item.date === modal.date);
-    return (
-      <Modal title={`${modal.date} 详情`} onClose={onClose}>
-        <DetailBlock title="训练" empty="当天没有训练">
-          {workouts.map((workout) => <WorkoutSummary key={workout.id} workout={workout} />)}
-        </DetailBlock>
-        <DetailBlock title="饮食" empty="当天没有饮食记录">
-          {meals.map((meal) => <div className="list-row" key={meal.id}><span>{meal.name}</span><strong>{meal.calories} kcal</strong></div>)}
-        </DetailBlock>
-        <DetailBlock title="体重" empty="当天没有体重记录">
-          {weights.map((weight) => <div className="list-row" key={weight.id}><span>{weight.time}</span><strong>{weight.value} kg</strong></div>)}
-        </DetailBlock>
-      </Modal>
-    );
-  }
-
-  return (
-    <Modal title="统计详情" onClose={onClose}>
-      {state.workouts.slice().reverse().map((workout) => <WorkoutSummary key={workout.id} workout={workout} />)}
-      {!state.workouts.length && <Empty text="还没有训练记录" />}
-    </Modal>
-  );
-}
-
-function DetailBlock({ title, empty, children }) {
-  const hasContent = Array.isArray(children) ? children.length > 0 : Boolean(children);
-  return (
-    <div className="detail-block">
-      <h4>{title}</h4>
-      {hasContent ? children : <Empty text={empty} />}
-    </div>
-  );
-}
-
-function Profile({ state, setData }) {
-  return (
-    <div className="screen">
-      <QuickWeight setData={setData} />
-      <section className="panel">
-        <div className="section-title"><h3>体重记录</h3><span>日期 + 时间</span></div>
-        {state.weights.slice().reverse().map((item) => (
-          <div className="list-row" key={item.id}>
-            <span>{item.date} {item.time}</span>
-            <strong>{item.value} kg</strong>
-          </div>
-        ))}
-      </section>
-      <section className="panel">
-        <div className="section-title"><h3>常用动作</h3><span>{state.favorites.length}</span></div>
-        <div className="chip-row">{state.favorites.map((name) => <span className="chip" key={name}>{name}</span>)}</div>
-      </section>
-    </div>
-  );
-}
-
-function QuickWeight({ setData }) {
-  const [weight, setWeight] = useState(70);
-  const [date, setDate] = useState(today());
-  const [time, setTime] = useState(nowTime());
-
-  const add = () => {
-    setData((data) => ({ ...data, weights: [...data.weights, { id: uid('weight'), date, time, value: Number(weight) }] }));
-  };
-
-  return (
-    <section className="panel">
-      <div className="section-title"><h3>记录体重</h3><span>支持时间</span></div>
-      <div className="form-grid">
-        <input type="date" value={date} onChange={(event) => setDate(event.target.value)} />
-        <input type="time" value={time} onChange={(event) => setTime(event.target.value)} />
-      </div>
-      <WheelPicker label="体重 kg" value={weight} min={35} max={150} step={0.1} onChange={setWeight} />
-      <button className="primary full" onClick={add}>保存体重</button>
-    </section>
-  );
-}
-
-function LineChart({ points }) {
-  if (points.length < 2) return <Empty text="至少两条体重记录后显示曲线" />;
-  const min = Math.min(...points.map((p) => p.value));
-  const max = Math.max(...points.map((p) => p.value));
-  const range = max - min || 1;
-  const coords = points.map((point, index) => {
-    const x = 28 + (index * 244) / Math.max(1, points.length - 1);
-    const y = 170 - ((point.value - min) / range) * 120;
-    return { ...point, x, y };
-  });
-  return (
-    <svg className="chart" viewBox="0 0 300 210" role="img" aria-label="体重趋势图">
-      <path d="M28 20V170H286" />
-      <polyline points={coords.map((p) => `${p.x},${p.y}`).join(' ')} />
-      {coords.map((point) => <circle key={point.label} cx={point.x} cy={point.y} r="4" />)}
-      <text x="28" y="194">{points.at(-1).label}</text>
-      <text x="218" y="28">{points.at(-1).value}kg</text>
-    </svg>
-  );
-}
-
-function History({ workouts }) {
-  return (
-    <section className="panel">
-      <div className="section-title"><h3>最近训练</h3><span>{workouts.length} 次</span></div>
-      {workouts.slice().reverse().slice(0, 5).map((workout) => <WorkoutSummary key={workout.id} workout={workout} />)}
-    </section>
-  );
-}
-
-function WorkoutSummary({ workout }) {
-  return (
-    <div className="summary">
-      <div className="section-title"><h3>{workout.date} {workout.time}</h3><span>{workout.duration} 分钟</span></div>
-      {workout.exercises.map((exercise, index) => (
-        <div className="list-row" key={`${exercise.name}-${index}`}>
-          <span>{exercise.name}</span>
-          <strong>{exercise.sets} 组 x {exercise.reps} 次</strong>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function Metric({ label, value }) {
-  return <div className="metric"><span>{label}</span><strong>{value}</strong></div>;
-}
-
-function Checklist({ done, label }) {
-  return <div className={`check ${done ? 'done' : ''}`}><span>{done ? '✓' : ''}</span>{label}</div>;
+function SmallButton({ children, onClick, color = C.blue, ghost }) {
+  return <button className={ghost ? 'small-btn ghost' : 'small-btn'} onClick={onClick} style={{ color: ghost ? color : '#fff', borderColor: color, background: ghost ? 'transparent' : color }}>{children}</button>;
 }
 
 function Empty({ text }) {
-  return <p className="empty">{text}</p>;
+  return <div className="empty">{text}</div>;
 }
 
-function Modal({ title, children, onClose, wide = false }) {
+function Modal({ title, onClose, children, wide }) {
   return (
-    <div className="modal-layer" role="dialog" aria-modal="true">
+    <div className="modal-layer">
       <button className="modal-backdrop" onClick={onClose} aria-label="关闭" />
       <div className={`modal ${wide ? 'wide' : ''}`}>
         <div className="modal-head">
           <h2>{title}</h2>
-          <button className="close" onClick={onClose}>×</button>
+          <button onClick={onClose}>×</button>
         </div>
         <div className="modal-body">{children}</div>
       </div>
@@ -599,41 +199,412 @@ function Modal({ title, children, onClose, wide = false }) {
   );
 }
 
-function getMonthDays(date) {
+function WheelPicker({ label, value, min, max, step = 1, onChange, suffix = '' }) {
+  const values = [];
+  for (let n = min; n <= max; n += step) values.push(Number(n.toFixed(1)));
+  return (
+    <label className="wheel">
+      <span>{label}</span>
+      <select value={value} onChange={(event) => onChange(Number(event.target.value))}>
+        {values.map((item) => <option key={item} value={item}>{item}{suffix}</option>)}
+      </select>
+    </label>
+  );
+}
+
+function WorkoutTab({ workouts, setWorkouts, favorites, setFavorites }) {
+  const [session, setSession] = useState(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [finishOpen, setFinishOpen] = useState(false);
+  const [rest, setRest] = useState(0);
+  const [, tick] = useState(0);
+  const prs = useMemo(() => calcPrs(workouts), [workouts]);
+  const lastWorkout = workouts[0];
+
+  useEffect(() => {
+    if (!session?.running && rest === 0) return;
+    const timer = setInterval(() => {
+      tick((v) => v + 1);
+      setRest((value) => Math.max(0, value - 1));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [session?.running, rest]);
+
+  const elapsed = session?.running ? Math.floor((Date.now() - session.startedAt) / 1000) : 0;
+
+  const begin = () => setSession({ startedAt: Date.now(), running: true, date: today(), time: nowTime(), exercises: [] });
+  const copyPrevious = () => {
+    if (!lastWorkout) return;
+    setSession({
+      startedAt: Date.now(),
+      running: true,
+      date: today(),
+      time: nowTime(),
+      exercises: lastWorkout.exercises.map((item) => ({ ...item, id: uid() }))
+    });
+  };
+  const addExercise = (exercise) => {
+    if (!session) begin();
+    setSession((current) => ({
+      ...(current || { startedAt: Date.now(), running: true, date: today(), time: nowTime(), exercises: [] }),
+      exercises: [...(current?.exercises || []), { ...exercise, id: uid(), sets: 3, reps: 10, weight: 0 }]
+    }));
+    setPickerOpen(false);
+  };
+  const updateExercise = (id, patch) => {
+    setSession((current) => ({ ...current, exercises: current.exercises.map((item) => item.id === id ? { ...item, ...patch } : item) }));
+  };
+  const saveSession = () => {
+    if (!session?.exercises.length) return;
+    const record = {
+      id: uid(),
+      date: session.date,
+      time: session.time,
+      totalDurationSec: Math.max(60, elapsed),
+      exercises: session.exercises
+    };
+    setWorkouts([record, ...workouts]);
+    setSession(null);
+    setFinishOpen(false);
+    setRest(0);
+  };
+  const discardSession = () => {
+    setSession(null);
+    setFinishOpen(false);
+    setRest(0);
+  };
+
+  return (
+    <div>
+      <Header title="健身记录" color={C.green} icon="◆" />
+      <main className="content">
+        <Card className="dashboard">
+          <div>
+            <p className="muted">今日训练</p>
+            <h2>{session ? secondsLabel(elapsed) : workouts.some((w) => w.date === today()) ? '已完成' : '准备开始'}</h2>
+          </div>
+          <div className="dashboard-actions">
+            {!session && <SmallButton onClick={begin} color={C.green}>开始训练</SmallButton>}
+            {!session && <SmallButton onClick={copyPrevious} color={C.blue} ghost>复制上次</SmallButton>}
+            {session && <SmallButton onClick={() => setFinishOpen(true)} color={C.red}>结束</SmallButton>}
+          </div>
+        </Card>
+
+        {rest > 0 && <Card className="rest-card"><span>休息计时</span><strong>{rest}s</strong></Card>}
+
+        <button className="add-dashed" onClick={() => setPickerOpen(true)}>＋ 添加训练动作</button>
+
+        {session && (
+          <Card>
+            <div className="section-title"><h3>本次训练</h3><span>{session.exercises.length} 个动作</span></div>
+            {session.exercises.map((exercise) => (
+              <div className="exercise-editor" key={exercise.id}>
+                <div className="exercise-title">
+                  <div>
+                    <strong>{exercise.name}</strong>
+                    <span>{exercise.group}</span>
+                  </div>
+                  <button onClick={() => setSession((current) => ({ ...current, exercises: current.exercises.filter((item) => item.id !== exercise.id) }))}>删除</button>
+                </div>
+                <div className="wheel-grid">
+                  <WheelPicker label="组数" value={exercise.sets} min={1} max={12} onChange={(sets) => updateExercise(exercise.id, { sets })} />
+                  <WheelPicker label="次数" value={exercise.reps} min={1} max={30} onChange={(reps) => updateExercise(exercise.id, { reps })} />
+                  <WheelPicker label="重量" value={exercise.weight} min={0} max={200} step={2.5} onChange={(weight) => updateExercise(exercise.id, { weight })} />
+                </div>
+                <SmallButton onClick={() => setRest(90)} color={C.orange} ghost>完成一组，休息 90 秒</SmallButton>
+              </div>
+            ))}
+            {!session.exercises.length && <Empty text="添加动作后开始记录" />}
+            <div className="split-actions">
+              <PrimaryButton onClick={() => setFinishOpen(true)} color={C.red}>结束训练</PrimaryButton>
+              <PrimaryButton onClick={saveSession} color={C.green} disabled={!session.exercises.length}>保存训练</PrimaryButton>
+            </div>
+          </Card>
+        )}
+
+        <Card>
+          <div className="section-title"><h3>个人纪录 PR</h3><span>自动统计</span></div>
+          {Object.entries(prs).slice(0, 4).map(([name, pr]) => (
+            <Row key={name}><span>{name}</span><b>{pr.weight}kg × {pr.reps}</b></Row>
+          ))}
+          {!Object.keys(prs).length && <Empty text="保存训练后会显示个人纪录" />}
+        </Card>
+
+        <Card>
+          <div className="section-title"><h3>最近训练</h3><span>{workouts.length} 次</span></div>
+          {workouts.slice(0, 5).map((workout) => <WorkoutSummary workout={workout} key={workout.id} />)}
+          {!workouts.length && <Empty text="还没有训练记录" />}
+        </Card>
+      </main>
+
+      {pickerOpen && <ExercisePicker favorites={favorites} setFavorites={setFavorites} onPick={addExercise} onClose={() => setPickerOpen(false)} />}
+      {finishOpen && (
+        <Modal title="结束训练" onClose={() => setFinishOpen(false)}>
+          <p className="modal-copy">结束后可以保存本次训练，也可以放弃，放弃不会写入记录。</p>
+          <div className="split-actions">
+            <PrimaryButton onClick={discardSession} color={C.red}>放弃训练</PrimaryButton>
+            <PrimaryButton onClick={saveSession} color={C.green} disabled={!session?.exercises.length}>保存训练</PrimaryButton>
+          </div>
+        </Modal>
+      )}
+    </div>
+  );
+}
+
+function ExercisePicker({ favorites, setFavorites, onPick, onClose }) {
+  const [groupKey, setGroupKey] = useState(groups[0].key);
+  const group = groups.find((item) => item.key === groupKey);
+  const toggleFavorite = (name) => {
+    setFavorites(favorites.includes(name) ? favorites.filter((item) => item !== name) : [...favorites, name]);
+  };
+  return (
+    <Modal title="添加训练动作" onClose={onClose} wide>
+      <div className="exercise-picker">
+        <div className="group-column">
+          {groups.map((item) => (
+            <button key={item.key} className={item.key === groupKey ? 'active' : ''} onClick={() => setGroupKey(item.key)}>{item.label}</button>
+          ))}
+        </div>
+        <div className="exercise-column">
+          {group.exercises.map((name) => (
+            <div className="pick-row" key={name}>
+              <button onClick={() => onPick({ name, group: group.label, color: group.color })}>
+                <strong>{name}</strong>
+                <span>{favorites.includes(name) ? '常用动作' : `${group.label}动作`}</span>
+              </button>
+              <button className="star" onClick={() => toggleFavorite(name)}>{favorites.includes(name) ? '★' : '☆'}</button>
+            </div>
+          ))}
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+function MealTab({ meals, setMeals }) {
+  const [name, setName] = useState('');
+  const [calories, setCalories] = useState(500);
+  const todayCalories = meals.filter((meal) => meal.date === today()).reduce((sum, meal) => sum + meal.calories, 0);
+  const addMeal = () => {
+    if (!name.trim()) return;
+    setMeals([{ id: uid(), date: today(), time: nowTime(), name: name.trim(), calories: Number(calories) }, ...meals]);
+    setName('');
+  };
+  return (
+    <div>
+      <Header title="饮食记录" color={C.orange} icon="◌" />
+      <main className="content">
+        <Card className="dashboard">
+          <div><p className="muted">今日摄入</p><h2>{todayCalories} 大卡</h2></div>
+        </Card>
+        <Card>
+          <div className="section-title"><h3>添加饮食</h3><span>手动记录</span></div>
+          <input className="text-input" value={name} onChange={(e) => setName(e.target.value)} placeholder="例如：鸡胸肉饭" />
+          <WheelPicker label="热量" value={calories} min={100} max={1600} step={50} onChange={setCalories} />
+          <PrimaryButton onClick={addMeal} color={C.orange}>保存饮食</PrimaryButton>
+        </Card>
+        <Card>
+          <div className="section-title"><h3>最近饮食</h3><span>{meals.length} 条</span></div>
+          {meals.slice(0, 8).map((meal) => <Row key={meal.id}><span>{meal.name}</span><b>{meal.calories} 大卡</b></Row>)}
+          {!meals.length && <Empty text="还没有饮食记录" />}
+        </Card>
+      </main>
+    </div>
+  );
+}
+
+function WeightTab({ weights, setWeights }) {
+  const [date, setDate] = useState(today());
+  const [time, setTime] = useState(nowTime());
+  const [weight, setWeight] = useState(70);
+  const addWeight = () => {
+    setWeights([{ id: uid(), date, time, weight: Number(weight) }, ...weights]);
+  };
+  return (
+    <div>
+      <Header title="体重记录" color={C.blue} icon="⌂" />
+      <main className="content">
+        <Card>
+          <div className="section-title"><h3>记录体重</h3><span>新增时间</span></div>
+          <div className="form-grid">
+            <input className="text-input" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+            <input className="text-input" type="time" value={time} onChange={(e) => setTime(e.target.value)} />
+          </div>
+          <WheelPicker label="体重 kg" value={weight} min={35} max={150} step={0.1} onChange={setWeight} />
+          <PrimaryButton onClick={addWeight} color={C.blue}>保存体重</PrimaryButton>
+        </Card>
+        <Card>
+          <div className="section-title"><h3>体重趋势</h3><span>{weights.length} 条</span></div>
+          <SvgLine data={weights.slice().reverse().map((item) => ({ label: `${dateLabel(item.date)} ${item.time || ''}`, value: item.weight }))} color={C.blue} />
+        </Card>
+        <Card>
+          {weights.map((item) => <Row key={item.id}><span>{item.date} {item.time || '--:--'}</span><b>{item.weight} kg</b></Row>)}
+          {!weights.length && <Empty text="还没有体重记录" />}
+        </Card>
+      </main>
+    </div>
+  );
+}
+
+function StatsTab({ workouts, meals, weights }) {
+  const [detail, setDetail] = useState(null);
+  const workoutDates = new Set(workouts.map((item) => item.date));
+  const monthDays = buildMonthDays(new Date());
+  const totalSec = workouts.reduce((sum, item) => sum + (item.totalDurationSec || 0), 0);
+  const volume = workouts.reduce((sum, workout) => sum + workout.exercises.reduce((s, e) => s + Number(e.sets || 0) * Number(e.reps || 0) * Number(e.weight || 0), 0), 0);
+  const thisMonth = today().slice(0, 7);
+  const monthWorkouts = workouts.filter((item) => item.date.startsWith(thisMonth)).length;
+
+  return (
+    <div>
+      <Header title="统计" color={C.purple} icon="▣" />
+      <main className="content stats-content">
+        <div className="summary-grid">
+          <Card onClick={() => setDetail({ type: 'summary' })}><Metric label="训练次数" value={`${workouts.length}`} color={C.green} /></Card>
+          <Card onClick={() => setDetail({ type: 'duration' })}><Metric label="训练时长" value={secondsLabel(totalSec)} color={C.teal} /></Card>
+          <Card onClick={() => setDetail({ type: 'volume' })}><Metric label="总容量" value={`${Math.round(volume)}kg`} color={C.orange} /></Card>
+          <Card onClick={() => setDetail({ type: 'month' })}><Metric label="本月训练" value={`${monthWorkouts}次`} color={C.purple} /></Card>
+        </div>
+
+        <Card className="calendar-card">
+          <div className="section-title"><h3>训练日历</h3><span>点击日期查看当天</span></div>
+          <div className="weekdays">{['一', '二', '三', '四', '五', '六', '日'].map((d) => <span key={d}>{d}</span>)}</div>
+          <div className="month-grid">
+            {monthDays.map((day, index) => (
+              <button
+                key={day ? day.date : `blank-${index}`}
+                className={`day ${day && workoutDates.has(day.date) ? 'trained' : ''} ${day?.date === today() ? 'today' : ''}`}
+                disabled={!day}
+                onClick={() => day && setDetail({ type: 'day', date: day.date })}
+              >
+                {day?.label}
+              </button>
+            ))}
+          </div>
+        </Card>
+
+        <Card className="chart-card">
+          <div className="section-title"><h3>体重曲线</h3><span>更大视图</span></div>
+          <SvgLine data={weights.slice().reverse().map((item) => ({ label: dateLabel(item.date), value: item.weight }))} color={C.blue} />
+        </Card>
+
+        <Card>
+          <div className="section-title"><h3>训练热力图</h3><span>最近 28 天</span></div>
+          <div className="heatmap">
+            {Array.from({ length: 28 }).map((_, index) => {
+              const date = today(index - 27);
+              return <button key={date} className={workoutDates.has(date) ? 'hot' : ''} onClick={() => setDetail({ type: 'day', date })} title={date} />;
+            })}
+          </div>
+        </Card>
+      </main>
+      {detail && <StatsDetail detail={detail} workouts={workouts} meals={meals} weights={weights} onClose={() => setDetail(null)} />}
+    </div>
+  );
+}
+
+function StatsDetail({ detail, workouts, meals, weights, onClose }) {
+  if (detail.type === 'day') {
+    const dayWorkouts = workouts.filter((item) => item.date === detail.date);
+    const dayMeals = meals.filter((item) => item.date === detail.date);
+    const dayWeights = weights.filter((item) => item.date === detail.date);
+    return (
+      <Modal title={`${dateLabel(detail.date)}详情`} onClose={onClose}>
+        <h3 className="detail-title">训练</h3>
+        {dayWorkouts.map((w) => <WorkoutSummary workout={w} key={w.id} />)}
+        {!dayWorkouts.length && <Empty text="当天没有训练" />}
+        <h3 className="detail-title">饮食</h3>
+        {dayMeals.map((m) => <Row key={m.id}><span>{m.name}</span><b>{m.calories} 大卡</b></Row>)}
+        {!dayMeals.length && <Empty text="当天没有饮食记录" />}
+        <h3 className="detail-title">体重</h3>
+        {dayWeights.map((w) => <Row key={w.id}><span>{w.time || '--:--'}</span><b>{w.weight} kg</b></Row>)}
+        {!dayWeights.length && <Empty text="当天没有体重记录" />}
+      </Modal>
+    );
+  }
+  return (
+    <Modal title="统计详情" onClose={onClose}>
+      {workouts.map((w) => <WorkoutSummary workout={w} key={w.id} />)}
+      {!workouts.length && <Empty text="还没有训练记录" />}
+    </Modal>
+  );
+}
+
+function Metric({ label, value, color }) {
+  return <div className="metric"><strong style={{ color }}>{value}</strong><span>{label}</span></div>;
+}
+
+function WorkoutSummary({ workout }) {
+  return (
+    <div className="workout-summary">
+      <div className="summary-head"><b>{dateLabel(workout.date)} · {workout.time}</b><span>{secondsLabel(workout.totalDurationSec || 0)}</span></div>
+      {(workout.exercises || []).map((exercise, index) => (
+        <Row key={`${exercise.name}-${index}`}><span>{exercise.name}</span><b>{exercise.sets}组 × {exercise.reps}次</b></Row>
+      ))}
+    </div>
+  );
+}
+
+function SvgLine({ data, color }) {
+  if (data.length < 2) return <Empty text="至少两条记录后显示曲线" />;
+  const min = Math.min(...data.map((item) => item.value));
+  const max = Math.max(...data.map((item) => item.value));
+  const range = max - min || 1;
+  const points = data.map((item, index) => {
+    const x = 22 + index * (256 / Math.max(1, data.length - 1));
+    const y = 178 - ((item.value - min) / range) * 126;
+    return { ...item, x, y };
+  });
+  return (
+    <svg className="svg-chart" viewBox="0 0 300 220">
+      <path d="M22 28V178H282" />
+      <polyline points={points.map((p) => `${p.x},${p.y}`).join(' ')} style={{ stroke: color }} />
+      {points.map((p) => <circle key={`${p.label}-${p.value}`} cx={p.x} cy={p.y} r="4" style={{ fill: color }} />)}
+      <text x="22" y="205">{data[0].label}</text>
+      <text x="220" y="205">{data[data.length - 1].label}</text>
+      <text x="222" y="34">{data[data.length - 1].value}kg</text>
+    </svg>
+  );
+}
+
+function TabBar({ tab, setTab }) {
+  const index = tabs.findIndex((item) => item.key === tab);
+  return (
+    <nav className="tabbar">
+      <div className="tab-indicator" style={{ left: `calc(${index} * 25% + 8px)` }} />
+      {tabs.map((item) => (
+        <button key={item.key} className={tab === item.key ? 'active' : ''} onClick={() => setTab(item.key)}>
+          <span>{item.icon}</span>
+          {item.label}
+        </button>
+      ))}
+    </nav>
+  );
+}
+
+function buildMonthDays(date) {
   const year = date.getFullYear();
   const month = date.getMonth();
   const first = new Date(year, month, 1);
   const last = new Date(year, month + 1, 0).getDate();
   const offset = (first.getDay() + 6) % 7;
   const days = Array.from({ length: offset }, () => null);
-  for (let day = 1; day <= last; day += 1) {
-    const value = new Date(year, month, day);
-    days.push({ label: day, date: value.toISOString().slice(0, 10) });
+  for (let d = 1; d <= last; d += 1) {
+    const value = new Date(year, month, d);
+    days.push({ label: d, date: value.toISOString().slice(0, 10) });
   }
-  while (days.length % 7) days.push(null);
+  while (days.length % 7 !== 0) days.push(null);
   return days;
 }
 
-function getStreak(workouts) {
-  const dates = new Set(workouts.map((item) => item.date));
-  let count = 0;
-  for (let offset = 0; offset > -365; offset -= 1) {
-    if (!dates.has(today(offset))) break;
-    count += 1;
-  }
-  return count;
-}
-
-function sumMeals(meals, date) {
-  return meals.filter((item) => item.date === date).reduce((sum, item) => sum + item.calories, 0);
-}
-
-function calculatePrs(workouts) {
+function calcPrs(workouts) {
   const prs = {};
   workouts.forEach((workout) => {
-    workout.exercises.forEach((exercise) => {
-      if (!prs[exercise.name] || exercise.weight > prs[exercise.name].weight) {
-        prs[exercise.name] = { weight: exercise.weight, reps: exercise.reps };
+    workout.exercises?.forEach((exercise) => {
+      const weight = Number(exercise.weight || 0);
+      const reps = Number(exercise.reps || 0);
+      if (!prs[exercise.name] || weight > prs[exercise.name].weight || (weight === prs[exercise.name].weight && reps > prs[exercise.name].reps)) {
+        prs[exercise.name] = { weight, reps };
       }
     });
   });
