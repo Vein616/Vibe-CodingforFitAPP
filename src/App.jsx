@@ -200,18 +200,18 @@ function AppBackground({ children }) {
 
 const inputStyle = { border: `1px solid rgba(255,255,255,0.7)`, background: 'rgba(255,255,255,0.6)', borderRadius: 10, padding: '8px 10px', fontSize: 14, fontFamily: FONT, outline: 'none', boxSizing: 'border-box' };
 
-function Sheet({ title, onClose, children }) {
+function Sheet({ title, onClose, children, centered }) {
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 200, display: 'flex', alignItems: 'flex-end' }}>
+    <div style={{ position: 'fixed', inset: 0, zIndex: 200, display: 'flex', alignItems: centered ? 'center' : 'flex-end', justifyContent: 'center' }}>
       <div onClick={onClose} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(4px)' }} />
       <div style={{
-        position: 'relative', width: '100%', maxWidth: 430, margin: '0 auto',
-        background: 'rgba(250,251,255,0.92)', backdropFilter: 'blur(30px) saturate(180%)', WebkitBackdropFilter: 'blur(30px) saturate(180%)',
-        borderRadius: '28px 28px 0 0', maxHeight: '82vh', overflowY: 'auto', padding: '14px 20px 30px', boxSizing: 'border-box',
-        boxShadow: '0 -8px 40px rgba(0,0,0,0.2)', animation: 'sheetUp 0.32s cubic-bezier(0.22,1,0.36,1)',
+        position: 'relative', width: '92%', maxWidth: 500, margin: '0 auto',
+        background: 'rgba(250,251,255,0.96)', backdropFilter: 'blur(30px) saturate(180%)', WebkitBackdropFilter: 'blur(30px) saturate(180%)',
+        borderRadius: 28, maxHeight: '85vh', overflowY: 'auto', padding: '18px 22px 26px', boxSizing: 'border-box',
+        boxShadow: '0 12px 48px rgba(0,0,0,0.25)', animation: centered ? 'modalPop 0.28s cubic-bezier(0.22,1,0.36,1)' : 'sheetUp 0.32s cubic-bezier(0.22,1,0.36,1)',
       }}>
-        <style>{`@keyframes sheetUp { from { transform: translateY(100%);} to { transform: translateY(0);} }`}</style>
-        <div style={{ width: 36, height: 5, borderRadius: 3, background: 'rgba(120,120,128,0.3)', margin: '0 auto 14px' }} />
+        <style>{`@keyframes sheetUp { from { transform: translateY(100%);} to { transform: translateY(0);} } @keyframes modalPop { from { transform: scale(0.92); opacity: 0; } to { transform: scale(1); opacity: 1; } }`}</style>
+        <div style={{ width: 36, height: 5, borderRadius: 3, background: 'rgba(120,120,128,0.3)', margin: '0 auto 14px', display: centered ? 'none' : 'block' }} />
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
           <h2 style={{ fontSize: 19, fontWeight: 700, color: C.text, fontFamily: FONT, margin: 0 }}>{title}</h2>
           <button onClick={onClose} style={{ border: 'none', background: 'rgba(120,120,128,0.16)', borderRadius: 14, width: 28, height: 28, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -331,6 +331,14 @@ function WorkoutTab({ workouts, save }) {
       setSession({ running: false, startedAt: null, elapsedSec: 0, startTimeStr: null });
     }
   }
+  function endSessionWithoutSaving() {
+    // End the session but discard data (don't save)
+    setSelected([]);
+    setActiveGroup(null);
+    setPending([]);
+    setRest({ running: false, startedAt: null, elapsedSec: 0 });
+    setSession({ running: false, startedAt: null, elapsedSec: 0, startTimeStr: null });
+  }
   function displaySession() {
     if (session.running && session.startedAt) return session.elapsedSec + Math.floor((Date.now() - session.startedAt) / 1000);
     return session.elapsedSec;
@@ -418,46 +426,67 @@ function WorkoutTab({ workouts, save }) {
         </div>
 
         {showPicker && (
-          <Sheet title="添加训练动作" onClose={closePicker}>
-            <p style={{ fontSize: 12, color: C.sub, margin: '0 4px 8px', fontFamily: FONT, textTransform: 'uppercase', letterSpacing: 0.3 }}>按部位选择</p>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
-              {MUSCLE_GROUPS.map(g => (
-                <Chip key={g.key} label={g.label} active={activeGroup === g.key} color={g.color} glass
-                  onClick={() => { setActiveGroup(activeGroup === g.key ? null : g.key); setPending([]); }} />
-              ))}
-            </div>
+          <Sheet title="添加训练动作" onClose={closePicker} centered>
+            <div style={{ display: 'flex', gap: 16, minHeight: 320 }}>
+              {/* Left side: muscle groups */}
+              <div style={{ width: 80, flexShrink: 0 }}>
+                <p style={{ fontSize: 12, color: C.sub, margin: '0 4px 8px', fontFamily: FONT, textTransform: 'uppercase', letterSpacing: 0.3 }}>部位</p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {MUSCLE_GROUPS.map(g => (
+                    <button
+                      key={g.key}
+                      onClick={() => setActiveGroup(g.key)}
+                      style={{
+                        border: 'none', borderRadius: 12, padding: '10px 8px',
+                        background: activeGroup === g.key ? g.color : 'rgba(120,120,128,0.12)',
+                        color: activeGroup === g.key ? '#fff' : C.text,
+                        fontSize: 14, fontWeight: activeGroup === g.key ? 600 : 500, fontFamily: FONT,
+                        cursor: 'pointer', textAlign: 'center',
+                        transition: 'all 0.15s',
+                      }}
+                    >
+                      {g.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
 
-            {currentGroup && (
-              <div style={{ ...GLASS, borderRadius: 18, padding: 14, marginBottom: 18 }}>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
-                  {currentGroup.exercises.map(ex => {
-                    const added = selected.some(e => e.name === ex);
-                    const isPending = pending.includes(ex);
-                    return (
-                      <Chip key={ex} label={ex} active={isPending} done={added} color={currentGroup.color} glass
-                        onClick={() => togglePending(ex)} />
-                    );
-                  })}
-                </div>
-                <div style={{ display: 'flex', gap: 8, marginBottom: pending.length > 0 ? 10 : 0 }}>
-                  <input
-                    value={custom}
-                    onChange={e => setCustom(e.target.value)}
-                    onKeyDown={e => e.key === 'Enter' && addCustom()}
-                    placeholder={`添加自定义${currentGroup.label}部动作`}
-                    style={{ flex: 1, ...GLASS, border: '1px solid rgba(255,255,255,0.7)', borderRadius: 12, padding: '9px 12px', fontSize: 13, fontFamily: FONT, outline: 'none' }}
-                  />
-                  <button onClick={addCustom} style={{ border: 'none', background: currentGroup.color, borderRadius: 12, width: 38, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <Plus size={17} color="#fff" />
-                  </button>
-                </div>
-                {pending.length > 0 && (
-                  <SmallButton onClick={() => confirmAddPending(currentGroup)} color={currentGroup.color}>
-                    <Plus size={14} /> 添加所选动作（{pending.length}）
-                  </SmallButton>
+              {/* Right side: exercises for selected group */}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p style={{ fontSize: 12, color: C.sub, margin: '0 4px 8px', fontFamily: FONT, textTransform: 'uppercase', letterSpacing: 0.3 }}>动作</p>
+                {currentGroup && (
+                  <div style={{ ...GLASS, borderRadius: 18, padding: 14, marginBottom: 18 }}>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
+                      {currentGroup.exercises.map(ex => {
+                        const added = selected.some(e => e.name === ex);
+                        const isPending = pending.includes(ex);
+                        return (
+                          <Chip key={ex} label={ex} active={isPending} done={added} color={currentGroup.color} glass
+                            onClick={() => togglePending(ex)} />
+                        );
+                      })}
+                    </div>
+                    <div style={{ display: 'flex', gap: 8, marginBottom: pending.length > 0 ? 10 : 0 }}>
+                      <input
+                        value={custom}
+                        onChange={e => setCustom(e.target.value)}
+                        onKeyDown={e => e.key === 'Enter' && addCustom()}
+                        placeholder={`添加自定义${currentGroup.label}部动作`}
+                        style={{ flex: 1, ...GLASS, border: '1px solid rgba(255,255,255,0.7)', borderRadius: 12, padding: '9px 12px', fontSize: 13, fontFamily: FONT, outline: 'none' }}
+                      />
+                      <button onClick={addCustom} style={{ border: 'none', background: currentGroup.color, borderRadius: 12, width: 38, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <Plus size={17} color="#fff" />
+                      </button>
+                    </div>
+                    {pending.length > 0 && (
+                      <SmallButton onClick={() => confirmAddPending(currentGroup)} color={currentGroup.color}>
+                        <Plus size={14} /> 添加所选动作（{pending.length}）
+                      </SmallButton>
+                    )}
+                  </div>
                 )}
               </div>
-            )}
+            </div>
 
             <div style={{ height: 1, background: C.sep, margin: '4px 0 18px' }} />
 
@@ -521,6 +550,14 @@ function WorkoutTab({ workouts, save }) {
                     {session.running ? <Square size={12} fill="#fff" /> : <Play size={12} fill="#fff" />}
                     {session.running ? '结束并保存' : '开始训练'}
                   </SmallButton>
+                </div>
+
+                <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
+                  {session.running && (
+                    <SmallButton onClick={endSessionWithoutSaving} color={C.sub} outline>
+                      <Trash2 size={12} /> 结束不保存
+                    </SmallButton>
+                  )}
                 </div>
 
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(255,255,255,0.5)', borderRadius: 14, padding: '10px 14px' }}>
@@ -1410,17 +1447,20 @@ export default function FitTrackApp() {
     const dx = e.touches[0].clientX - startX.current;
     const dy = e.touches[0].clientY - startY.current;
     if (!lockedAxis.current) {
-      if (Math.abs(dx) > 8 || Math.abs(dy) > 8) lockedAxis.current = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y';
+      if (Math.abs(dx) > 15 || Math.abs(dy) > 8) lockedAxis.current = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y';
     }
     if (lockedAxis.current === 'x') {
       if (e.cancelable) e.preventDefault();
       setDragX(dx);
+    } else if (lockedAxis.current === 'y') {
+      // Block vertical scroll when dragging starts
+      if (e.cancelable) e.preventDefault();
     }
   }
   function onTouchEnd() {
     setDragging(false);
     if (lockedAxis.current === 'x') {
-      const threshold = vw * 0.22;
+      const threshold = vw * 0.18;
       if (dragX < -threshold && idx < TAB_ORDER.length - 1) setTab(TAB_ORDER[idx + 1]);
       else if (dragX > threshold && idx > 0) setTab(TAB_ORDER[idx - 1]);
     }
