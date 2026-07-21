@@ -33,13 +33,47 @@ const GLASS = {
 };
 
 const MUSCLE_GROUPS = [
-  { key: 'chest', label: '胸', color: C.red, exercises: ['杠铃卧推', '哑铃卧推', '上斜哑铃卧推', '下斜杠铃卧推', '蝴蝶机夹胸', '双杠臂屈伸', '绳索夹胸', '俯卧撑'] },
-  { key: 'back', label: '背', color: C.blue, exercises: ['引体向上', '高位下拉', '坐姿绳索划船', '杠铃划船', '单臂哑铃划船', '硬拉', 'T杠划船', '直臂下拉'] },
-  { key: 'shoulder', label: '肩', color: C.orange, exercises: ['杠铃推举', '哑铃肩推', '侧平举', '前平举', '反向飞鸟', '阿诺德推举', '直立划船', '耸肩'] },
-  { key: 'leg', label: '腿', color: C.purple, exercises: ['杠铃深蹲', '腿举机', '腿屈伸', '腿弯举', '保加利亚分腿蹲', '箭步蹲', '臀桥', '站姿提踵'] },
-  { key: 'arm', label: '臂', color: C.teal, exercises: ['杠铃弯举', '哑铃弯举', '锤式弯举', '绳索下压', '窄距卧推', '反手臂屈伸', '牧师凳弯举', '过头臂屈伸'] },
-  { key: 'core', label: '腹', color: C.pink, exercises: ['卷腹', '平板支撑', '悬垂举腿', '俄罗斯转体', '山羊挺身', '自行车卷腹', '侧平板支撑'] },
-  { key: 'cardio', label: '有氧', color: C.green, exercises: ['跑步', '动感单车', '游泳', '划船机', '椭圆机', '跳绳', '爬楼机'] },
+  { key: 'chest', label: '胸', color: C.red, exercises: [
+    ['杠铃卧推', '杠铃'], ['上斜杠铃卧推', '杠铃'], ['下斜杠铃卧推', '杠铃'],
+    ['哑铃卧推', '哑铃'], ['上斜哑铃卧推', '哑铃'], ['哑铃飞鸟', '哑铃'],
+    ['蝴蝶机夹胸', '器械'], ['坐姿推胸机', '器械'], ['绳索夹胸', '绳索'], ['绳索交叉夹胸', '绳索'],
+    ['双杠臂屈伸', '自重'], ['俯卧撑', '自重'], ['下斜俯卧撑', '自重'],
+  ] },
+  { key: 'back', label: '背', color: C.blue, exercises: [
+    ['硬拉', '杠铃'], ['杠铃划船', '杠铃'], ['T杠划船', '杠铃'],
+    ['哑铃划船', '哑铃'], ['单臂哑铃划船', '哑铃'],
+    ['高位下拉', '器械'], ['坐姿划船机', '器械'], ['器械划船', '器械'],
+    ['绳索划船', '绳索'], ['直臂下拉', '绳索'],
+    ['引体向上', '自重'], ['反手引体向上', '自重'],
+  ] },
+  { key: 'shoulder', label: '肩', color: C.orange, exercises: [
+    ['杠铃推举', '杠铃'], ['杠铃直立划船', '杠铃'], ['耸肩', '杠铃'],
+    ['哑铃肩推', '哑铃'], ['阿诺德推举', '哑铃'], ['侧平举', '哑铃'], ['前平举', '哑铃'], ['反向飞鸟', '哑铃'],
+    ['器械推举', '器械'], ['器械侧平举', '器械'],
+    ['绳索侧平举', '绳索'], ['面拉', '绳索'],
+  ] },
+  { key: 'leg', label: '腿', color: C.purple, exercises: [
+    ['杠铃深蹲', '杠铃'], ['箭步蹲', '杠铃'], ['罗马尼亚硬拉', '杠铃'],
+    ['哑铃深蹲', '哑铃'], ['保加利亚分腿蹲', '哑铃'],
+    ['腿举机', '器械'], ['腿屈伸', '器械'], ['腿弯举', '器械'], ['臀推机', '器械'], ['站姿提踵', '器械'],
+    ['自重深蹲', '自重'], ['臀桥', '自重'],
+  ] },
+  { key: 'arm', label: '臂', color: C.teal, exercises: [
+    ['杠铃弯举', '杠铃'], ['窄距卧推', '杠铃'],
+    ['哑铃弯举', '哑铃'], ['锤式弯举', '哑铃'], ['过头臂屈伸', '哑铃'], ['牧师凳弯举', '哑铃'],
+    ['绳索下压', '绳索'], ['绳索弯举', '绳索'],
+    ['反手臂屈伸', '自重'], ['双杠臂屈伸', '自重'],
+    ['器械弯举', '器械'], ['器械臂屈伸', '器械'],
+  ] },
+  { key: 'core', label: '腹', color: C.pink, exercises: [
+    ['卷腹', '自重'], ['悬垂举腿', '自重'], ['平板支撑', '自重'], ['侧平板支撑', '自重'], ['俄罗斯转体', '自重'], ['自行车卷腹', '自重'],
+    ['山羊挺身', '器械'], ['药球转体', '器械'],
+    ['绳索卷腹', '绳索'], ['负重卷腹', '哑铃'],
+  ] },
+  { key: 'cardio', label: '有氧', color: C.green, exercises: [
+    ['跑步', '有氧器械'], ['动感单车', '有氧器械'], ['划船机', '有氧器械'], ['椭圆机', '有氧器械'], ['爬楼机', '有氧器械'],
+    ['游泳', '自重'], ['跳绳', '自重'], ['战绳', '自重'],
+  ] },
 ];
 
 const MEAL_TYPES = [
@@ -49,7 +83,7 @@ const MEAL_TYPES = [
   { key: '加餐', color: C.green },
 ];
 
-const UNITS = ['次', 'kg', '秒', '分'];
+const UNITS = ['kg', '秒', '分钟', '公里'];
 
 function uid() { return Math.random().toString(36).slice(2, 10); }
 function todayStr() { return new Date().toISOString().slice(0, 10); }
@@ -200,6 +234,11 @@ function AppBackground({ children }) {
 }
 
 const inputStyle = { border: `1px solid rgba(255,255,255,0.7)`, background: 'rgba(255,255,255,0.6)', borderRadius: 10, padding: '8px 10px', fontSize: 14, fontFamily: FONT, outline: 'none', boxSizing: 'border-box' };
+const tooltipStyle = {
+  contentStyle: { background: 'rgba(255,255,255,0.94)', border: '1px solid rgba(255,255,255,0.7)', borderRadius: 14, fontFamily: FONT, fontSize: 12, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', padding: '8px 12px' },
+  labelStyle: { color: C.text, fontFamily: FONT, fontWeight: 600, marginBottom: 4, fontSize: 12 },
+  itemStyle: { color: C.text, fontFamily: FONT, fontSize: 12 },
+};
 
 function Modal({ title, onClose, children, width }) {
   return (
@@ -292,6 +331,7 @@ function WorkoutTab({ workouts, save }) {
   const [time, setTime] = useState(nowTime());
   const [showPicker, setShowPicker] = useState(false);
   const [activeGroup, setActiveGroup] = useState(null);
+  const [activeEquip, setActiveEquip] = useState(null);
   const [pending, setPending] = useState([]);
   const [selected, setSelected] = useState([]);
   const [custom, setCustom] = useState('');
@@ -321,16 +361,12 @@ function WorkoutTab({ workouts, save }) {
     if (selected.some(e => e.name === name)) return;
     setSelected(s => [...s, {
       id: uid(), name, group: groupLabel, color: groupColor, collapsed: false, unit: '次',
-      sets: [{ id: uid(), value: 8, restSec: null, completed: false }],
+      sets: [{ id: uid(), reps: 8, intensity: 0, restSec: null, completed: false }],
     }]);
   }
-  function togglePending(name) {
-    if (selected.some(e => e.name === name)) return;
-    setPending(p => p.includes(name) ? p.filter(x => x !== name) : [...p, name]);
-  }
-  function confirmAddPending(group) {
-    pending.forEach(name => addExercise(name, group.label, group.color));
-    setPending([]);
+  function toggleExerciseDirect(name, groupLabel, groupColor) {
+    if (selected.some(e => e.name === name)) setSelected(s => s.filter(e => e.name !== name));
+    else addExercise(name, groupLabel, groupColor);
   }
   function toggleSearchPending(name) {
     if (selected.some(e => e.name === name)) return;
@@ -385,11 +421,11 @@ function WorkoutTab({ workouts, save }) {
     setSelected(s => s.map(e => {
       if (e.id !== id) return e;
       const last = e.sets[e.sets.length - 1];
-      return { ...e, sets: [...e.sets, { id: uid(), value: last ? last.value : 8, restSec: null, completed: false }] };
+      return { ...e, sets: [...e.sets, { id: uid(), reps: last ? last.reps : 8, intensity: last ? last.intensity : 0, restSec: null, completed: false }] };
     }));
   }
-  function updateSetValue(exId, setId, value) {
-    setSelected(s => s.map(e => e.id === exId ? { ...e, sets: e.sets.map(st => st.id === setId ? { ...st, value } : st) } : e));
+  function updateSetField(exId, setId, field, value) {
+    setSelected(s => s.map(e => e.id === exId ? { ...e, sets: e.sets.map(st => st.id === setId ? { ...st, [field]: value } : st) } : e));
   }
   function toggleSetComplete(exId, setId) {
     const now = Date.now();
@@ -439,7 +475,7 @@ function WorkoutTab({ workouts, save }) {
     if (selected.length === 0) return;
     const entry = {
       id: uid(), date, time, startTime: session.startTimeStr, endTime: session.endTimeStr, totalDurationSec: session.elapsedSec,
-      exercises: selected.map(e => ({ name: e.name, group: e.group, color: e.color, unit: e.unit, sets: e.sets.map(s => ({ value: s.value, completed: s.completed, restSec: s.restSec })) })),
+      exercises: selected.map(e => ({ name: e.name, group: e.group, color: e.color, unit: e.unit, sets: e.sets.map(s => ({ reps: s.reps, intensity: s.intensity, completed: s.completed, restSec: s.restSec })) })),
     };
     save([entry, ...workouts]);
     resetAll();
@@ -460,7 +496,7 @@ function WorkoutTab({ workouts, save }) {
   }
   function startEdit(w) {
     setEditingId(w.id);
-    setEditDraft({ date: w.date, time: w.time, exercises: w.exercises.map(e => ({ ...e, sets: e.sets ? e.sets.map(s => ({ ...s })) : [] })) });
+    setEditDraft({ date: w.date, time: w.time, exercises: w.exercises.map(e => ({ ...e, sets: Array.isArray(e.sets) ? e.sets.map(s => ({ ...s })) : [] })) });
   }
   function cancelEdit() { setEditingId(null); setEditDraft(null); }
   function saveEdit(id) {
@@ -495,33 +531,44 @@ function WorkoutTab({ workouts, save }) {
 
         {showPicker && (
           <Modal title="添加训练动作" onClose={closePicker} width={400}>
-            <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
-              <div style={{ width: 78, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 300, overflowY: 'auto' }}>
+            <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+              <div style={{ width: 56, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 300, overflowY: 'auto' }}>
                 {MUSCLE_GROUPS.map(g => (
-                  <button key={g.key} onClick={() => { setActiveGroup(g.key); setPending([]); }} style={{
-                    border: 'none', borderRadius: 12, padding: '10px 6px', cursor: 'pointer',
+                  <button key={g.key} onClick={() => { setActiveGroup(g.key); setActiveEquip(null); }} style={{
+                    border: 'none', borderRadius: 12, padding: '10px 4px', cursor: 'pointer',
                     background: activeGroup === g.key ? g.color : 'rgba(120,120,128,0.08)',
                     color: activeGroup === g.key ? '#fff' : C.text,
-                    fontSize: 13, fontWeight: 600, fontFamily: FONT, textAlign: 'center',
+                    fontSize: 12, fontWeight: 600, fontFamily: FONT, textAlign: 'center',
                   }}>{g.label}</button>
                 ))}
               </div>
+              {currentGroup && (
+                <div style={{ width: 56, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 300, overflowY: 'auto' }}>
+                  {[...new Set(currentGroup.exercises.map(e => e[1]))].map(eq => (
+                    <button key={eq} onClick={() => setActiveEquip(activeEquip === eq ? null : eq)} style={{
+                      border: 'none', borderRadius: 12, padding: '8px 3px', cursor: 'pointer',
+                      background: activeEquip === eq ? currentGroup.color : 'rgba(120,120,128,0.08)',
+                      color: activeEquip === eq ? '#fff' : C.text,
+                      fontSize: 11, fontWeight: 600, fontFamily: FONT, textAlign: 'center',
+                    }}>{eq}</button>
+                  ))}
+                </div>
+              )}
               <div style={{ flex: 1, minWidth: 0, maxHeight: 300, overflowY: 'auto' }}>
                 {!currentGroup ? (
-                  <div style={{ fontSize: 13, color: C.sub, fontFamily: FONT, padding: '10px 4px' }}>先在左侧选择训练部位</div>
+                  <div style={{ fontSize: 13, color: C.sub, fontFamily: FONT, padding: '10px 4px' }}>先选训练部位</div>
                 ) : (
                   <>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
-                      {currentGroup.exercises.map(ex => {
-                        const added = selected.some(e => e.name === ex);
-                        const isPending = pending.includes(ex);
+                      {currentGroup.exercises.filter(e => !activeEquip || e[1] === activeEquip).map(e => {
+                        const added = selected.some(s => s.name === e[0]);
                         return (
-                          <Chip key={ex} label={ex} active={isPending} done={added} color={currentGroup.color} glass
-                            onClick={() => togglePending(ex)} />
+                          <Chip key={e[0]} label={e[0]} active={added} color={currentGroup.color} glass
+                            onClick={() => toggleExerciseDirect(e[0], currentGroup.label, currentGroup.color)} />
                         );
                       })}
                     </div>
-                    <div style={{ display: 'flex', gap: 6, marginBottom: pending.length > 0 ? 8 : 0 }}>
+                    <div style={{ display: 'flex', gap: 6 }}>
                       <input
                         value={custom}
                         onChange={e => setCustom(e.target.value)}
@@ -533,11 +580,6 @@ function WorkoutTab({ workouts, save }) {
                         <Plus size={15} color="#fff" />
                       </button>
                     </div>
-                    {pending.length > 0 && (
-                      <SmallButton onClick={() => confirmAddPending(currentGroup)} color={currentGroup.color}>
-                        <Plus size={13} /> 添加（{pending.length}）
-                      </SmallButton>
-                    )}
                   </>
                 )}
               </div>
@@ -682,17 +724,20 @@ function WorkoutTab({ workouts, save }) {
                         </div>
                       ) : (
                         <div style={{ marginTop: 10 }}>
-                          <div style={{ display: 'grid', gridTemplateColumns: '28px 1fr 1fr 30px', gap: 6, paddingBottom: 6, borderBottom: `1px solid ${C.sep}`, marginBottom: 4 }}>
+                          <div style={{ display: 'grid', gridTemplateColumns: '22px 46px 1fr 1fr 26px', gap: 5, paddingBottom: 6, borderBottom: `1px solid ${C.sep}`, marginBottom: 4 }}>
                             <span style={{ fontSize: 11, color: C.sub, fontFamily: FONT, textAlign: 'center' }}>组</span>
                             <span style={{ fontSize: 11, color: C.sub, fontFamily: FONT, textAlign: 'center' }}>时间</span>
+                            <span style={{ fontSize: 11, color: C.sub, fontFamily: FONT, textAlign: 'center' }}>次数</span>
                             <button onClick={() => cycleUnit(ex.id)} style={{ border: 'none', background: 'none', fontSize: 11, color: C.sub, fontFamily: FONT, cursor: 'pointer', textAlign: 'center' }}>{ex.unit} ▾</button>
                             <span style={{ fontSize: 11, color: C.sub, fontFamily: FONT, textAlign: 'center' }}>✓</span>
                           </div>
                           {ex.sets.map((s, i) => (
-                            <div key={s.id} style={{ display: 'grid', gridTemplateColumns: '28px 1fr 1fr 30px', gap: 6, alignItems: 'center', padding: '6px 0' }}>
+                            <div key={s.id} style={{ display: 'grid', gridTemplateColumns: '22px 46px 1fr 1fr 26px', gap: 5, alignItems: 'center', padding: '6px 0' }}>
                               <span style={{ textAlign: 'center', fontSize: 14, fontWeight: 600, color: C.text, fontFamily: FONT }}>{i + 1}</span>
-                              <span style={{ textAlign: 'center', fontSize: 12, fontFamily: 'monospace', color: s.restSec != null ? C.text : C.sub }}>{s.restSec != null ? fmtSec(s.restSec) : '-'}</span>
-                              <input type="number" value={s.value} onChange={e => updateSetValue(ex.id, s.id, e.target.value)}
+                              <span style={{ textAlign: 'center', fontSize: 11, fontFamily: 'monospace', color: s.restSec != null ? C.text : C.sub }}>{s.restSec != null ? fmtSec(s.restSec) : '-'}</span>
+                              <input type="number" value={s.reps} onChange={e => updateSetField(ex.id, s.id, 'reps', e.target.value)}
+                                style={{ ...inputStyle, textAlign: 'center', padding: '6px 2px', fontSize: 13 }} />
+                              <input type="number" value={s.intensity} onChange={e => updateSetField(ex.id, s.id, 'intensity', e.target.value)}
                                 style={{ ...inputStyle, textAlign: 'center', padding: '6px 2px', fontSize: 13 }} />
                               <button onClick={() => toggleSetComplete(ex.id, s.id)} style={{ border: 'none', background: 'none', cursor: 'pointer', display: 'flex', justifyContent: 'center' }}>
                                 <div style={{ width: 22, height: 22, borderRadius: 11, background: s.completed ? C.green : 'rgba(120,120,128,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -761,12 +806,21 @@ function WorkoutTab({ workouts, save }) {
                             <button onClick={() => removeDraftEx(i)} style={{ border: 'none', background: 'none', cursor: 'pointer' }}><X size={14} color={C.sub} /></button>
                           </div>
                           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                            {(ex.sets || []).map((s, si) => (
-                              <input key={si} type="number" value={s.value}
-                                onChange={e => setEditDraft(d => ({
-                                  ...d, exercises: d.exercises.map((exx, ii) => ii === i ? { ...exx, sets: exx.sets.map((ss, sii) => sii === si ? { ...ss, value: e.target.value } : ss) } : exx)
-                                }))}
-                                style={{ ...inputStyle, width: 46, padding: '5px 3px', textAlign: 'center', fontSize: 12 }} />
+                            {(Array.isArray(ex.sets) ? ex.sets : []).map((s, si) => (
+                              <div key={si} style={{ display: 'flex', gap: 3, alignItems: 'center' }}>
+                                <input type="number" value={s.reps}
+                                  onChange={e => setEditDraft(d => ({
+                                    ...d, exercises: d.exercises.map((exx, ii) => ii === i ? { ...exx, sets: exx.sets.map((ss, sii) => sii === si ? { ...ss, reps: e.target.value } : ss) } : exx)
+                                  }))}
+                                  style={{ ...inputStyle, width: 40, padding: '5px 2px', textAlign: 'center', fontSize: 12 }} />
+                                <span style={{ fontSize: 10, color: C.sub }}>次/</span>
+                                <input type="number" value={s.intensity}
+                                  onChange={e => setEditDraft(d => ({
+                                    ...d, exercises: d.exercises.map((exx, ii) => ii === i ? { ...exx, sets: exx.sets.map((ss, sii) => sii === si ? { ...ss, intensity: e.target.value } : ss) } : exx)
+                                  }))}
+                                  style={{ ...inputStyle, width: 40, padding: '5px 2px', textAlign: 'center', fontSize: 12 }} />
+                                <span style={{ fontSize: 10, color: C.sub }}>{ex.unit}</span>
+                              </div>
                             ))}
                           </div>
                         </div>
@@ -795,7 +849,7 @@ function WorkoutTab({ workouts, save }) {
                   {(w.exercises || []).map((ex, i) => (
                     <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, fontFamily: FONT, marginBottom: 3 }}>
                       <span style={{ color: C.text }}>{ex.name}</span>
-                      <span style={{ color: C.sub }}>{(ex.sets || []).map(s => s.value).join('/')} {ex.unit}</span>
+                      <span style={{ color: C.sub }}>{(Array.isArray(ex.sets) ? ex.sets : []).map(s => `${s.reps}次${s.intensity ? '/' + s.intensity + ex.unit : ''}`).join('、')}</span>
                     </div>
                   ))}
                 </div>
@@ -1003,12 +1057,14 @@ function WeightTab({ weights, save }) {
   const [editingId, setEditingId] = useState(null);
   const [editDraft, setEditDraft] = useState(null);
   const [weightDetail, setWeightDetail] = useState(null);
+  const [tappedDate, setTappedDate] = useState(null);
+  const [showAvg, setShowAvg] = useState(false);
 
   function submit() {
     const w = parseFloat(weight);
     if (!w || w <= 0) return;
     const entry = { id: uid(), date, time, weight: w };
-    const list = [...weights.filter(x => x.date !== date), entry].sort((a, b) => a.date.localeCompare(b.date));
+    const list = [...weights, entry].sort((a, b) => (a.date + (a.time || '')).localeCompare(b.date + (b.time || '')));
     save(list);
     setWeight('');
   }
@@ -1018,14 +1074,20 @@ function WeightTab({ weights, save }) {
   function startEdit(w) { setEditingId(w.id); setEditDraft({ ...w }); }
   function cancelEdit() { setEditingId(null); setEditDraft(null); }
   function saveEdit() {
-    save(weights.map(w => w.id === editDraft.id ? { ...editDraft, weight: parseFloat(editDraft.weight) } : w).sort((a, b) => a.date.localeCompare(b.date)));
+    save(weights.map(w => w.id === editDraft.id ? { ...editDraft, weight: parseFloat(editDraft.weight) } : w).sort((a, b) => (a.date + (a.time || '')).localeCompare(b.date + (b.time || ''))));
     setEditingId(null); setEditDraft(null);
   }
 
-  const sorted = [...weights].sort((a, b) => b.date.localeCompare(a.date));
+  const sorted = [...weights].sort((a, b) => (b.date + (b.time || '')).localeCompare(a.date + (a.time || '')));
   const latest = sorted[0];
   const prev = sorted[1];
   const delta = latest && prev ? +(latest.weight - prev.weight).toFixed(1) : null;
+  const dayAvgData = useMemo(() => {
+    const m = {};
+    weights.forEach(w => { (m[w.date] = m[w.date] || []).push(w.weight); });
+    return Object.keys(m).sort().map(d => ({ date: d, weight: +(m[d].reduce((a, b) => a + b, 0) / m[d].length).toFixed(1) }));
+  }, [weights]);
+  const overallAvg = weights.length ? +(weights.reduce((s, w) => s + w.weight, 0) / weights.length).toFixed(1) : null;
 
   return (
     <div>
@@ -1070,54 +1132,78 @@ function WeightTab({ weights, save }) {
           </PrimaryButton>
         </div>
 
-        <p style={{ fontSize: 13, color: C.sub, margin: '0 4px 8px', fontFamily: FONT, textTransform: 'uppercase', letterSpacing: 0.3 }}>体重曲线（点击可查看/编辑）</p>
+        <p style={{ fontSize: 13, color: C.sub, margin: '0 4px 8px', fontFamily: FONT, textTransform: 'uppercase', letterSpacing: 0.3 }}>体重曲线（按天平均，点击可查看/编辑）</p>
         <Card style={{ marginBottom: 24 }}>
           <div style={{ padding: '16px 8px' }}>
             {sorted.length === 0 ? <Empty text="还没有记录，输入今天的体重吧" /> : (
-              <div style={{ height: 260 }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={[...weights].sort((a, b) => a.date.localeCompare(b.date))}
-                    margin={{ left: -20, right: 8 }}
-                    onClick={e => { if (e && e.activeLabel) setWeightDetail(e.activeLabel); }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke={C.sep} vertical={false} />
-                    <XAxis dataKey="date" tickFormatter={d => d.slice(5)} tick={{ fontSize: 10, fill: C.sub }} />
-                    <YAxis tick={{ fontSize: 10, fill: C.sub }} domain={['dataMin - 1', 'dataMax + 1']} label={{ value: 'kg', angle: -90, position: 'insideLeft', fontSize: 11, fill: C.sub }} />
-                    <Tooltip labelFormatter={d => fmtDate(d)} />
-                    <Line type="monotone" dataKey="weight" stroke={C.blue} strokeWidth={2} dot={{ r: 4, cursor: 'pointer' }} activeDot={{ r: 6 }} />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
+              <>
+                <div style={{ height: 260 }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={dayAvgData}
+                      margin={{ left: -20, right: 8, top: showAvg ? 20 : 5 }}
+                      onClick={e => {
+                        if (!e || !e.activeLabel) return;
+                        if (tappedDate === e.activeLabel) { setWeightDetail(e.activeLabel); setTappedDate(null); }
+                        else setTappedDate(e.activeLabel);
+                      }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke={C.sep} vertical={false} />
+                      <XAxis dataKey="date" tickFormatter={d => d.slice(5)} tick={{ fontSize: 10, fill: C.sub }} />
+                      <YAxis tick={{ fontSize: 10, fill: C.sub }} domain={['dataMin - 1', 'dataMax + 1']} label={{ value: 'kg', angle: -90, position: 'insideLeft', fontSize: 11, fill: C.sub }} />
+                      <Tooltip labelFormatter={d => fmtDate(d)} {...tooltipStyle} formatter={v => [`${v} kg`, '当日均值']} />
+                      {showAvg && overallAvg !== null && (
+                        <ReferenceLine y={overallAvg} stroke={C.orange} strokeDasharray="4 4"
+                          label={{ value: `均值 ${overallAvg}kg`, position: 'top', fill: C.orange, fontSize: 11, fontFamily: FONT }} />
+                      )}
+                      <Line type="monotone" dataKey="weight" stroke={C.blue} strokeOpacity={showAvg ? 0.35 : 1} strokeWidth={2}
+                        dot={{ r: 4, cursor: 'pointer' }} activeDot={{ r: 6 }} name="当日均值" />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+                <div style={{ textAlign: 'center', marginTop: 8 }}>
+                  <SmallButton onClick={() => setShowAvg(v => !v)} color={C.orange} outline={!showAvg}>
+                    {showAvg ? '隐藏均值' : '查看均值'}
+                  </SmallButton>
+                </div>
+              </>
             )}
           </div>
         </Card>
 
         {weightDetail && (() => {
-          const w = weights.find(x => x.date === weightDetail);
-          if (!w) return null;
-          const isEditing = editingId === w.id;
+          const dayList = weights.filter(x => x.date === weightDetail).sort((a, b) => (a.time || '').localeCompare(b.time || ''));
+          if (dayList.length === 0) return null;
+          const avg = +(dayList.reduce((s, x) => s + x.weight, 0) / dayList.length).toFixed(1);
           return (
-            <Modal title={fmtDate(w.date)} onClose={() => { setWeightDetail(null); cancelEdit(); }} width={340}>
-              {isEditing ? (
-                <div>
-                  <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
-                    <input type="date" value={editDraft.date} onChange={e => setEditDraft(d => ({ ...d, date: e.target.value }))} style={{ ...inputStyle, flex: 1 }} />
-                    <input type="time" value={editDraft.time || ''} onChange={e => setEditDraft(d => ({ ...d, time: e.target.value }))} style={{ ...inputStyle, flex: 1 }} />
-                    <input type="number" step="0.1" value={editDraft.weight} onChange={e => setEditDraft(d => ({ ...d, weight: e.target.value }))} style={{ ...inputStyle, width: 70 }} />
-                  </div>
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <SmallButton onClick={() => { saveEdit(); setWeightDetail(editDraft.date); }} color={C.green}><Check size={13} /> 保存</SmallButton>
-                    <SmallButton onClick={cancelEdit} color={C.sub}>取消</SmallButton>
-                  </div>
-                </div>
-              ) : (
-                <div onClick={() => startEdit(w)} style={{ textAlign: 'center', padding: '10px 0', cursor: 'pointer' }}>
-                  <div style={{ fontSize: 34, fontWeight: 800, color: C.text, fontFamily: FONT }}>{w.weight}<span style={{ fontSize: 14, color: C.sub, fontWeight: 500 }}> kg</span></div>
-                  {w.time && <div style={{ fontSize: 12, color: C.sub, fontFamily: FONT, marginTop: 4 }}>记录时间 {w.time}</div>}
-                  <div style={{ fontSize: 12, color: C.blue, fontFamily: FONT, marginTop: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
-                    <Pencil size={11} /> 点击修改
-                  </div>
-                </div>
+            <Modal title={fmtDate(weightDetail)} onClose={() => { setWeightDetail(null); cancelEdit(); }} width={360}>
+              {dayList.length > 1 && (
+                <div style={{ fontSize: 12, color: C.sub, fontFamily: FONT, marginBottom: 10, textAlign: 'center' }}>当日均值 {avg} kg（共{dayList.length}条）</div>
               )}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {dayList.map(w => {
+                  const isEditing = editingId === w.id;
+                  if (isEditing) {
+                    return (
+                      <div key={w.id} style={{ ...GLASS, borderRadius: 14, padding: 12 }}>
+                        <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+                          <input type="time" value={editDraft.time || ''} onChange={e => setEditDraft(d => ({ ...d, time: e.target.value }))} style={{ ...inputStyle, flex: 1 }} />
+                          <input type="number" step="0.1" value={editDraft.weight} onChange={e => setEditDraft(d => ({ ...d, weight: e.target.value }))} style={{ ...inputStyle, width: 70 }} />
+                        </div>
+                        <div style={{ display: 'flex', gap: 8 }}>
+                          <SmallButton onClick={saveEdit} color={C.green}><Check size={13} /> 保存</SmallButton>
+                          <SmallButton onClick={cancelEdit} color={C.sub}>取消</SmallButton>
+                        </div>
+                      </div>
+                    );
+                  }
+                  return (
+                    <div key={w.id} onClick={() => startEdit(w)} style={{ ...GLASS, borderRadius: 14, padding: '10px 14px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: 13, color: C.sub, fontFamily: FONT }}>{w.time || '--'}</span>
+                      <span style={{ fontSize: 16, fontWeight: 700, color: C.text, fontFamily: FONT }}>{w.weight} kg</span>
+                      <Pencil size={12} color={C.blue} />
+                    </div>
+                  );
+                })}
+              </div>
             </Modal>
           );
         })()}
@@ -1141,10 +1227,8 @@ function buildDayRange(days) {
 
 function workoutColor(v) {
   if (!v) return 'rgba(60,60,67,0.1)';
-  const min = v / 60;
-  if (min < 20) return 'rgba(48,209,88,0.35)';
-  if (min < 45) return 'rgba(48,209,88,0.65)';
-  return 'rgba(48,209,88,1)';
+  const t = Math.min(1, (v / 60) / 60);
+  return `rgba(48,209,88,${(0.22 + t * 0.78).toFixed(2)})`;
 }
 function mealColor(v) {
   if (v === 0) return 'rgba(60,60,67,0.1)';
@@ -1198,7 +1282,8 @@ function StatsTab({ workouts, meals, weights }) {
 
   const weightByDate = useMemo(() => {
     const m = {};
-    weights.forEach(w => { m[w.date] = w.weight; });
+    weights.forEach(w => { (m[w.date] = m[w.date] || []).push(w.weight); });
+    Object.keys(m).forEach(d => { m[d] = +(m[d].reduce((a, b) => a + b, 0) / m[d].length).toFixed(1); });
     return m;
   }, [weights]);
 
@@ -1224,7 +1309,12 @@ function StatsTab({ workouts, meals, weights }) {
   function nextMonth() { setCalDate(c => { const m = c.month + 1; return m > 11 ? { year: c.year + 1, month: 0 } : { year: c.year, month: m }; }); }
 
   const currentValueByDate = metric === 'workout' ? workoutDurationByDate : metric === 'meal' ? mealByDate : weightByDate;
-  const currentColorFn = metric === 'workout' ? workoutColor : metric === 'meal' ? mealColor : weightColor;
+  const weightColorFn = useMemo(() => {
+    const vals = weights.map(w => w.weight);
+    const mn = vals.length ? Math.min(...vals) : 0, mx = vals.length ? Math.max(...vals) : 1;
+    return v => { if (!v) return 'rgba(60,60,67,0.1)'; const t = mx > mn ? (v - mn) / (mx - mn) : 0.5; return `rgba(10,132,255,${(0.25 + t * 0.75).toFixed(2)})`; };
+  }, [weights]);
+  const currentColorFn = metric === 'workout' ? workoutColor : metric === 'meal' ? mealColor : weightColorFn;
 
   const summaryTitles = { workout: '本周训练详情', duration: '本周训练时长详情', calories: '每日热量详情', weight: '体重变化详情' };
 
@@ -1248,9 +1338,21 @@ function StatsTab({ workouts, meals, weights }) {
                   valueByDate={currentValueByDate} colorFn={currentColorFn} binary={false}
                   onDayClick={setDayDetail}
                 />
-                {metric === 'workout' && <Legend items={[['未训练', 'rgba(60,60,67,0.1)'], ['<20分', 'rgba(48,209,88,0.35)'], ['20-45分', 'rgba(48,209,88,0.65)'], ['>45分', 'rgba(48,209,88,1)']]} />}
+                {metric === 'workout' && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12 }}>
+                    <span style={{ fontSize: 11, color: C.sub, fontFamily: FONT }}>短</span>
+                    <div style={{ flex: 1, height: 8, borderRadius: 4, background: 'linear-gradient(90deg, rgba(48,209,88,0.22), rgba(48,209,88,1))' }} />
+                    <span style={{ fontSize: 11, color: C.sub, fontFamily: FONT }}>长</span>
+                  </div>
+                )}
                 {metric === 'meal' && <Legend items={[['未记录', 'rgba(60,60,67,0.1)'], ['<1200', 'rgba(255,159,10,0.3)'], ['1200-2500', 'rgba(255,159,10,0.65)'], ['>2500', 'rgba(255,69,58,0.8)']]} />}
-                {metric === 'weight' && <Legend items={[['未记录', 'rgba(60,60,67,0.1)'], ['已记录', C.blue]]} />}
+                {metric === 'weight' && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12 }}>
+                    <span style={{ fontSize: 11, color: C.sub, fontFamily: FONT }}>轻</span>
+                    <div style={{ flex: 1, height: 8, borderRadius: 4, background: 'linear-gradient(90deg, rgba(10,132,255,0.25), rgba(10,132,255,1))' }} />
+                    <span style={{ fontSize: 11, color: C.sub, fontFamily: FONT }}>重</span>
+                  </div>
+                )}
               </>
             )}
 
@@ -1261,7 +1363,7 @@ function StatsTab({ workouts, meals, weights }) {
                     <CartesianGrid strokeDasharray="3 3" stroke={C.sep} vertical={false} />
                     <XAxis dataKey="date" tick={{ fontSize: 10, fill: C.sub }} interval={4} />
                     <YAxis tick={{ fontSize: 10, fill: C.sub }} allowDecimals={false} label={{ value: '分钟', angle: -90, position: 'insideLeft', fontSize: 11, fill: C.sub }} />
-                    <Tooltip />
+                    <Tooltip {...tooltipStyle} />
                     <Bar dataKey="minutes" fill={C.green} radius={[4, 4, 0, 0]} name="训练时长(分钟)" />
                     <Line type="monotone" dataKey="avg" stroke={C.blue} strokeWidth={2} dot={false} name="7日均值" />
                   </ComposedChart>
@@ -1275,7 +1377,7 @@ function StatsTab({ workouts, meals, weights }) {
                     <CartesianGrid strokeDasharray="3 3" stroke={C.sep} vertical={false} />
                     <XAxis dataKey="date" tick={{ fontSize: 10, fill: C.sub }} interval={4} />
                     <YAxis tick={{ fontSize: 10, fill: C.sub }} label={{ value: '大卡', angle: -90, position: 'insideLeft', fontSize: 11, fill: C.sub }} />
-                    <Tooltip />
+                    <Tooltip {...tooltipStyle} />
                     <ReferenceLine y={2000} stroke={C.sub} strokeDasharray="4 4" />
                     <Line type="monotone" dataKey="calories" stroke={C.orange} strokeWidth={2} dot={false} name="每日热量" />
                   </LineChart>
@@ -1290,7 +1392,7 @@ function StatsTab({ workouts, meals, weights }) {
                       <CartesianGrid strokeDasharray="3 3" stroke={C.sep} vertical={false} />
                       <XAxis dataKey="date" tick={{ fontSize: 10, fill: C.sub }} />
                       <YAxis tick={{ fontSize: 10, fill: C.sub }} domain={['dataMin - 1', 'dataMax + 1']} label={{ value: 'kg', angle: -90, position: 'insideLeft', fontSize: 11, fill: C.sub }} />
-                      <Tooltip />
+                      <Tooltip {...tooltipStyle} />
                       <Line type="monotone" dataKey="weight" stroke={C.blue} strokeWidth={2} dot={{ r: 3 }} name="体重" />
                     </LineChart>
                   </ResponsiveContainer>
@@ -1341,11 +1443,15 @@ function StatsTab({ workouts, meals, weights }) {
             );
           })()}
           {metric === 'weight' && (() => {
-            const w = weights.find(x => x.date === dayDetail);
-            return !w ? <Empty text="这天没有体重记录" /> : (
-              <div style={{ textAlign: 'center', padding: '10px 0' }}>
-                <div style={{ fontSize: 34, fontWeight: 800, color: C.text, fontFamily: FONT }}>{w.weight}<span style={{ fontSize: 14, color: C.sub, fontWeight: 500 }}> kg</span></div>
-                {w.time && <div style={{ fontSize: 12, color: C.sub, fontFamily: FONT, marginTop: 4 }}>记录时间 {w.time}</div>}
+            const list = weights.filter(x => x.date === dayDetail).sort((a, b) => (a.time || '').localeCompare(b.time || ''));
+            return list.length === 0 ? <Empty text="这天没有体重记录" /> : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {list.map(w => (
+                  <div key={w.id} style={{ ...GLASS, borderRadius: 14, padding: '10px 14px', display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ fontSize: 13, color: C.sub, fontFamily: FONT }}>{w.time || '--'}</span>
+                    <span style={{ fontSize: 15, fontWeight: 700, color: C.text, fontFamily: FONT }}>{w.weight} kg</span>
+                  </div>
+                ))}
               </div>
             );
           })()}
