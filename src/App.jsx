@@ -326,6 +326,33 @@ async function searchExercisesAI(query) {
   return response.json();
 }
 
+function WheelPicker({ value, onChange, min = 0, max = 100 }) {
+  const ref = useRef(null);
+  const itemH = 40;
+  const range = useMemo(() => { const a = []; for (let i = min; i <= max; i++) a.push(i); return a; }, [min, max]);
+  useEffect(() => {
+    if (ref.current) ref.current.scrollTop = Math.max(0, value - min) * itemH;
+  }, []);
+  function handleScroll(e) {
+    const idx = Math.round(e.target.scrollTop / itemH);
+    const v = Math.min(max, Math.max(min, min + idx));
+    if (v !== value) onChange(v);
+  }
+  return (
+    <div style={{ position: 'relative', height: itemH * 3 }}>
+      <div style={{ position: 'absolute', top: itemH, left: 0, right: 0, height: itemH, background: 'rgba(10,132,255,0.1)', borderRadius: 10, pointerEvents: 'none', border: '1px solid rgba(10,132,255,0.25)' }} />
+      <div ref={ref} onScroll={handleScroll} className="wheel-scroll" style={{ height: '100%', overflowY: 'scroll', scrollSnapType: 'y mandatory', WebkitOverflowScrolling: 'touch' }}>
+        <style>{`.wheel-scroll::-webkit-scrollbar{display:none}`}</style>
+        <div style={{ height: itemH }} />
+        {range.map(n => (
+          <div key={n} style={{ height: itemH, display: 'flex', alignItems: 'center', justifyContent: 'center', scrollSnapAlign: 'center', fontSize: n === value ? 22 : 16, fontWeight: n === value ? 700 : 400, color: n === value ? C.text : C.sub, fontFamily: FONT }}>{n}</div>
+        ))}
+        <div style={{ height: itemH }} />
+      </div>
+    </div>
+  );
+}
+
 function WorkoutTab({ workouts, save }) {
   const [date, setDate] = useState(todayStr());
   const [time, setTime] = useState(nowTime());
@@ -349,6 +376,7 @@ function WorkoutTab({ workouts, save }) {
   const [editDraft, setEditDraft] = useState(null);
   const [calDate, setCalDate] = useState(() => { const d = new Date(); return { year: d.getFullYear(), month: d.getMonth() }; });
   const [calDayDetail, setCalDayDetail] = useState(null);
+  const [wheelEdit, setWheelEdit] = useState(null);
   const [, forceTick] = useState(0);
 
   useEffect(() => {
@@ -724,22 +752,22 @@ function WorkoutTab({ workouts, save }) {
                         </div>
                       ) : (
                         <div style={{ marginTop: 10 }}>
-                          <div style={{ display: 'grid', gridTemplateColumns: '22px 46px 1fr 1fr 26px', gap: 5, paddingBottom: 6, borderBottom: `1px solid ${C.sep}`, marginBottom: 4 }}>
+                          <div style={{ display: 'grid', gridTemplateColumns: '20px 40px minmax(0,1fr) minmax(0,1fr) 26px', gap: 4, paddingBottom: 6, borderBottom: `1px solid ${C.sep}`, marginBottom: 4 }}>
                             <span style={{ fontSize: 11, color: C.sub, fontFamily: FONT, textAlign: 'center' }}>组</span>
                             <span style={{ fontSize: 11, color: C.sub, fontFamily: FONT, textAlign: 'center' }}>时间</span>
                             <span style={{ fontSize: 11, color: C.sub, fontFamily: FONT, textAlign: 'center' }}>次数</span>
-                            <button onClick={() => cycleUnit(ex.id)} style={{ border: 'none', background: 'none', fontSize: 11, color: C.sub, fontFamily: FONT, cursor: 'pointer', textAlign: 'center' }}>{ex.unit} ▾</button>
+                            <button onClick={() => cycleUnit(ex.id)} style={{ border: 'none', background: 'none', fontSize: 11, color: C.sub, fontFamily: FONT, cursor: 'pointer', textAlign: 'center', minWidth: 0, padding: 0 }}>{ex.unit} ▾</button>
                             <span style={{ fontSize: 11, color: C.sub, fontFamily: FONT, textAlign: 'center' }}>✓</span>
                           </div>
                           {ex.sets.map((s, i) => (
-                            <div key={s.id} style={{ display: 'grid', gridTemplateColumns: '22px 46px 1fr 1fr 26px', gap: 5, alignItems: 'center', padding: '6px 0' }}>
+                            <div key={s.id} style={{ display: 'grid', gridTemplateColumns: '20px 40px minmax(0,1fr) minmax(0,1fr) 26px', gap: 4, alignItems: 'center', padding: '6px 0' }}>
                               <span style={{ textAlign: 'center', fontSize: 14, fontWeight: 600, color: C.text, fontFamily: FONT }}>{i + 1}</span>
                               <span style={{ textAlign: 'center', fontSize: 11, fontFamily: 'monospace', color: s.restSec != null ? C.text : C.sub }}>{s.restSec != null ? fmtSec(s.restSec) : '-'}</span>
-                              <input type="number" value={s.reps} onChange={e => updateSetField(ex.id, s.id, 'reps', e.target.value)}
-                                style={{ ...inputStyle, textAlign: 'center', padding: '6px 2px', fontSize: 13 }} />
-                              <input type="number" value={s.intensity} onChange={e => updateSetField(ex.id, s.id, 'intensity', e.target.value)}
-                                style={{ ...inputStyle, textAlign: 'center', padding: '6px 2px', fontSize: 13 }} />
-                              <button onClick={() => toggleSetComplete(ex.id, s.id)} style={{ border: 'none', background: 'none', cursor: 'pointer', display: 'flex', justifyContent: 'center' }}>
+                              <button onClick={() => setWheelEdit({ exId: ex.id, setId: s.id, field: 'reps' })}
+                                style={{ ...inputStyle, width: '100%', minWidth: 0, boxSizing: 'border-box', textAlign: 'center', padding: '6px 2px', fontSize: 13, cursor: 'pointer' }}>{s.reps}</button>
+                              <button onClick={() => setWheelEdit({ exId: ex.id, setId: s.id, field: 'intensity' })}
+                                style={{ ...inputStyle, width: '100%', minWidth: 0, boxSizing: 'border-box', textAlign: 'center', padding: '6px 2px', fontSize: 13, cursor: 'pointer' }}>{s.intensity}</button>
+                              <button onClick={() => toggleSetComplete(ex.id, s.id)} style={{ border: 'none', background: 'none', cursor: 'pointer', display: 'flex', justifyContent: 'center', minWidth: 0 }}>
                                 <div style={{ width: 22, height: 22, borderRadius: 11, background: s.completed ? C.green : 'rgba(120,120,128,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                   {s.completed && <Check size={13} color="#fff" />}
                                 </div>
@@ -772,6 +800,22 @@ function WorkoutTab({ workouts, save }) {
             <Plus size={20} /> 添加训练动作
           </button>
         </div>
+
+        {wheelEdit && (() => {
+          const ex = selected.find(e => e.id === wheelEdit.exId);
+          const st = ex && ex.sets.find(s => s.id === wheelEdit.setId);
+          if (!ex || !st) return null;
+          const isReps = wheelEdit.field === 'reps';
+          return (
+            <Modal title={isReps ? '次数' : `强度（${ex.unit}）`} onClose={() => setWheelEdit(null)} width={260}>
+              <WheelPicker value={Number(st[wheelEdit.field]) || 0} min={0} max={isReps ? 50 : 300}
+                onChange={v => updateSetField(wheelEdit.exId, wheelEdit.setId, wheelEdit.field, v)} />
+              <div style={{ marginTop: 14 }}>
+                <PrimaryButton onClick={() => setWheelEdit(null)} color={C.blue}>完成</PrimaryButton>
+              </div>
+            </Modal>
+          );
+        })()}
 
         <p style={{ fontSize: 13, color: C.sub, margin: '0 4px 8px', fontFamily: FONT, textTransform: 'uppercase', letterSpacing: 0.3 }}>训练日历</p>
         <Card style={{ marginBottom: 24 }}>
@@ -808,13 +852,13 @@ function WorkoutTab({ workouts, save }) {
                           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                             {(Array.isArray(ex.sets) ? ex.sets : []).map((s, si) => (
                               <div key={si} style={{ display: 'flex', gap: 3, alignItems: 'center' }}>
-                                <input type="number" value={s.reps}
+                                <input type="number" value={s.reps ?? s.value ?? 0}
                                   onChange={e => setEditDraft(d => ({
                                     ...d, exercises: d.exercises.map((exx, ii) => ii === i ? { ...exx, sets: exx.sets.map((ss, sii) => sii === si ? { ...ss, reps: e.target.value } : ss) } : exx)
                                   }))}
                                   style={{ ...inputStyle, width: 40, padding: '5px 2px', textAlign: 'center', fontSize: 12 }} />
                                 <span style={{ fontSize: 10, color: C.sub }}>次/</span>
-                                <input type="number" value={s.intensity}
+                                <input type="number" value={s.intensity ?? 0}
                                   onChange={e => setEditDraft(d => ({
                                     ...d, exercises: d.exercises.map((exx, ii) => ii === i ? { ...exx, sets: exx.sets.map((ss, sii) => sii === si ? { ...ss, intensity: e.target.value } : ss) } : exx)
                                   }))}
@@ -849,7 +893,7 @@ function WorkoutTab({ workouts, save }) {
                   {(w.exercises || []).map((ex, i) => (
                     <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, fontFamily: FONT, marginBottom: 3 }}>
                       <span style={{ color: C.text }}>{ex.name}</span>
-                      <span style={{ color: C.sub }}>{(Array.isArray(ex.sets) ? ex.sets : []).map(s => `${s.reps}次${s.intensity ? '/' + s.intensity + ex.unit : ''}`).join('、')}</span>
+                      <span style={{ color: C.sub }}>{(Array.isArray(ex.sets) ? ex.sets : []).map(s => `${s.reps ?? s.value ?? '-'}次${s.intensity ? '/' + s.intensity + (ex.unit || '') : ''}`).join('、')}</span>
                     </div>
                   ))}
                 </div>
