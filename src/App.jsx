@@ -265,7 +265,7 @@ function Modal({ title, onClose, children, width }) {
 
 const navBtnStyle = { border: 'none', background: 'rgba(120,120,128,0.12)', borderRadius: 10, width: 30, height: 30, fontSize: 16, color: C.text, cursor: 'pointer', fontFamily: FONT, flexShrink: 0 };
 
-function MonthCalendar({ year, month, onPrev, onNext, valueByDate, colorFn, binary, onDayClick, tagsByDate }) {
+function MonthCalendar({ year, month, onPrev, onNext, valueByDate, colorFn, binary, onDayClick, tagsByDate, presenceByDate, subLabelByDate }) {
   const first = new Date(year, month, 1);
   const startWeekday = first.getDay();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
@@ -296,24 +296,31 @@ function MonthCalendar({ year, month, onPrev, onNext, valueByDate, colorFn, bina
           {week.map((d, di) => {
             if (!d) return <div key={di} />;
             const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-            const val = valueByDate[dateStr] || 0;
-            const has = val > 0;
+            const val = valueByDate[dateStr];
+            const has = presenceByDate ? !!presenceByDate[dateStr] : (val || 0) > 0;
             const isToday = dateStr === today;
             const tags = tagsByDate && tagsByDate[dateStr];
+            const subLabel = subLabelByDate && subLabelByDate[dateStr];
             return (
               <button key={di} onClick={() => onDayClick(dateStr)} style={{
-                aspectRatio: '1', border: isToday ? `1.5px solid ${C.blue}` : 'none', borderRadius: 11,
-                background: binary ? (has ? colorFn(1) : 'rgba(120,120,128,0.07)') : colorFn(val),
+                minHeight: 50, border: isToday ? `1.5px solid ${C.blue}` : 'none', borderRadius: 11,
+                background: binary ? (has ? colorFn(1) : 'rgba(120,120,128,0.07)') : colorFn(val || 0),
                 cursor: 'pointer', fontSize: 14, fontWeight: has ? 700 : 500,
-                color: has ? '#fff' : C.sub, fontFamily: FONT, padding: 0,
-                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2,
+                color: has ? '#fff' : C.sub, fontFamily: FONT, padding: '5px 2px 4px',
+                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-start', gap: 2,
               }}>
                 <span>{d}</span>
                 {tags && tags.length > 0 && (
-                  <span style={{ display: 'flex', gap: 2 }}>
-                    {tags.map((c, ci) => <span key={ci} style={{ width: 4, height: 4, borderRadius: 2, background: c }} />)}
+                  <span style={{ display: 'flex', gap: 2, flexWrap: 'wrap', justifyContent: 'center' }}>
+                    {tags.map((t, ci) => (
+                      <span key={ci} style={{
+                        fontSize: 8, lineHeight: '13px', width: 13, height: 13, borderRadius: 4,
+                        background: t.color, color: '#fff', border: '1px solid rgba(255,255,255,0.7)', fontFamily: FONT,
+                      }}>{t.label[0]}</span>
+                    ))}
                   </span>
                 )}
+                {subLabel && <span style={{ fontSize: 8, fontFamily: FONT, opacity: 0.9 }}>{subLabel}</span>}
               </button>
             );
           })}
@@ -335,15 +342,16 @@ async function searchExercisesAI(query) {
   return response.json();
 }
 
-function WheelPicker({ value, onChange, min = 0, max = 100 }) {
+function WheelPicker({ value, onChange, min = 0, max = 100, items }) {
   const ref = useRef(null);
   const itemH = 40;
-  const range = useMemo(() => { const a = []; for (let i = min; i <= max; i++) a.push(i); return a; }, [min, max]);
+  const range = useMemo(() => { if (items) return items; const a = []; for (let i = min; i <= max; i++) a.push(i); return a; }, [min, max, items]);
   useEffect(() => {
-    if (ref.current) ref.current.scrollTop = Math.max(0, value - min) * itemH;
+    if (ref.current) { const idx = Math.max(0, items ? items.indexOf(value) : value - min); ref.current.scrollTop = idx * itemH; }
   }, []);
   function handleScroll(e) {
     const idx = Math.round(e.target.scrollTop / itemH);
+    if (items) { const v = items[Math.min(items.length - 1, Math.max(0, idx))]; if (v !== value) onChange(v); return; }
     const v = Math.min(max, Math.max(min, min + idx));
     if (v !== value) onChange(v);
   }
@@ -366,6 +374,7 @@ function WorkoutTab({ workouts, save }) {
   const [date, setDate] = useState(todayStr());
   const [time, setTime] = useState(nowTime());
   const [showPicker, setShowPicker] = useState(false);
+  const [pickerBaseline, setPickerBaseline] = useState([]);
   const [activeGroup, setActiveGroup] = useState(null);
   const [activeEquip, setActiveEquip] = useState(null);
   const [pending, setPending] = useState([]);
@@ -386,6 +395,8 @@ function WorkoutTab({ workouts, save }) {
   const [calDate, setCalDate] = useState(() => { const d = new Date(); return { year: d.getFullYear(), month: d.getMonth() }; });
   const [calDayDetail, setCalDayDetail] = useState(null);
   const [wheelEdit, setWheelEdit] = useState(null);
+  const [unitEdit, setUnitEdit] = useState(null);
+  const [customUnit, setCustomUnit] = useState('');
   const [, forceTick] = useState(0);
 
   useEffect(() => {
@@ -402,8 +413,11 @@ function WorkoutTab({ workouts, save }) {
     }]);
   }
   function toggleExerciseDirect(name, groupLabel, groupColor) {
-    if (selected.some(e => e.name === name)) setSelected(s => s.filter(e => e.name !== name));
-    else addExercise(name, groupLabel, groupColor);
+    const existing = selected.find(e => e.name === name);
+    if (existing) {
+      if (pickerBaseline.includes(existing.id)) return;
+      setSelected(s => s.filter(e => e.name !== name));
+    } else addExercise(name, groupLabel, groupColor);
   }
   function toggleSearchPending(name) {
     if (selected.some(e => e.name === name)) return;
@@ -548,7 +562,11 @@ function WorkoutTab({ workouts, save }) {
   const workoutDayMap = useMemo(() => { const m = {}; workouts.forEach(w => { m[w.date] = (m[w.date] || 0) + 1; }); return m; }, [workouts]);
   const workoutTagsByDate = useMemo(() => {
     const m = {};
-    workouts.forEach(w => { m[w.date] = [...new Set((w.exercises || []).map(e => e.color))].slice(0, 4); });
+    workouts.forEach(w => {
+      const seen = new Map();
+      (w.exercises || []).forEach(e => { if (!seen.has(e.group)) seen.set(e.group, e.color); });
+      m[w.date] = [...seen.entries()].map(([label, color]) => ({ label, color })).slice(0, 3);
+    });
     return m;
   }, [workouts]);
   const currentGroup = MUSCLE_GROUPS.find(g => g.key === activeGroup);
@@ -601,12 +619,23 @@ function WorkoutTab({ workouts, save }) {
                   <div style={{ fontSize: 13, color: C.sub, fontFamily: FONT, padding: '10px 4px' }}>先选训练部位</div>
                 ) : (
                   <>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 10 }}>
                       {currentGroup.exercises.filter(e => !activeEquip || e[1] === activeEquip).map(e => {
-                        const added = selected.some(s => s.name === e[0]);
+                        const existing = selected.find(s => s.name === e[0]);
+                        const locked = existing && pickerBaseline.includes(existing.id);
+                        const added = !!existing;
                         return (
-                          <Chip key={e[0]} label={e[0]} active={added} color={currentGroup.color} glass
-                            onClick={() => toggleExerciseDirect(e[0], currentGroup.label, currentGroup.color)} />
+                          <button key={e[0]} onClick={() => toggleExerciseDirect(e[0], currentGroup.label, currentGroup.color)}
+                            disabled={locked}
+                            style={{
+                              width: '100%', textAlign: 'left', border: added ? 'none' : '1px solid rgba(255,255,255,0.6)',
+                              borderRadius: 12, padding: '10px 12px', cursor: locked ? 'default' : 'pointer',
+                              background: locked ? 'rgba(120,120,128,0.12)' : (added ? currentGroup.color : 'rgba(255,255,255,0.45)'),
+                              color: locked ? C.sub : (added ? '#fff' : C.text), fontSize: 14, fontFamily: FONT, fontWeight: 500,
+                              display: 'flex', alignItems: 'center', gap: 6, opacity: locked ? 0.7 : 1,
+                            }}>
+                            {added && <Check size={13} />}{e[0]}
+                          </button>
                         );
                       })}
                     </div>
@@ -667,11 +696,11 @@ function WorkoutTab({ workouts, save }) {
               </div>
             )}
 
-            {selected.length > 0 && (
+            {selected.filter(e => !pickerBaseline.includes(e.id)).length > 0 && (
               <div style={{ marginBottom: 14 }}>
-                <p style={{ fontSize: 12, color: C.sub, margin: '0 2px 8px', fontFamily: FONT, textTransform: 'uppercase', letterSpacing: 0.3 }}>已选动作（{selected.length}）</p>
+                <p style={{ fontSize: 12, color: C.sub, margin: '0 2px 8px', fontFamily: FONT, textTransform: 'uppercase', letterSpacing: 0.3 }}>新添加动作（{selected.filter(e => !pickerBaseline.includes(e.id)).length}）</p>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                  {selected.map(e => (
+                  {selected.filter(e => !pickerBaseline.includes(e.id)).map(e => (
                     <span key={e.id} style={{ display: 'flex', alignItems: 'center', gap: 4, background: `${e.color}22`, color: e.color, borderRadius: 16, padding: '6px 10px 6px 12px', fontSize: 12, fontWeight: 600, fontFamily: FONT }}>
                       {e.name}
                       <button onClick={() => removeEx(e.id)} style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 0, display: 'flex' }}><X size={12} color={e.color} /></button>
@@ -784,7 +813,7 @@ function WorkoutTab({ workouts, save }) {
                             <span style={{ fontSize: 11, color: C.sub, fontFamily: FONT, textAlign: 'center' }}>组</span>
                             <span style={{ fontSize: 11, color: C.sub, fontFamily: FONT, textAlign: 'center' }}>时间</span>
                             <span style={{ fontSize: 11, color: C.sub, fontFamily: FONT, textAlign: 'center' }}>次数</span>
-                            <button onClick={() => cycleUnit(ex.id)} style={{ border: 'none', background: 'none', fontSize: 11, color: C.sub, fontFamily: FONT, cursor: 'pointer', textAlign: 'center', minWidth: 0, padding: 0 }}>{ex.unit} ▾</button>
+                            <button onClick={() => { setUnitEdit(ex.id); setCustomUnit(''); }} style={{ border: 'none', background: 'none', fontSize: 11, color: C.sub, fontFamily: FONT, cursor: 'pointer', textAlign: 'center', minWidth: 0, padding: 0 }}>{ex.unit} ▾</button>
                             <span style={{ fontSize: 11, color: C.sub, fontFamily: FONT, textAlign: 'center' }}>✓</span>
                           </div>
                           {ex.sets.map((s, i) => (
@@ -793,8 +822,8 @@ function WorkoutTab({ workouts, save }) {
                               <span style={{ textAlign: 'center', fontSize: 11, fontFamily: 'monospace', color: s.restSec != null ? C.text : C.sub }}>{s.restSec != null ? fmtSec(s.restSec) : '-'}</span>
                               <button onClick={() => setWheelEdit({ exId: ex.id, setId: s.id, field: 'reps' })}
                                 style={{ ...inputStyle, width: '100%', minWidth: 0, boxSizing: 'border-box', textAlign: 'center', padding: '6px 2px', fontSize: 13, cursor: 'pointer' }}>{s.reps}</button>
-                              <button onClick={() => setWheelEdit({ exId: ex.id, setId: s.id, field: 'intensity' })}
-                                style={{ ...inputStyle, width: '100%', minWidth: 0, boxSizing: 'border-box', textAlign: 'center', padding: '6px 2px', fontSize: 13, cursor: 'pointer' }}>{s.intensity}</button>
+                              <input type="number" step="0.5" value={s.intensity} onChange={e => updateSetField(ex.id, s.id, 'intensity', e.target.value)}
+                                style={{ ...inputStyle, width: '100%', minWidth: 0, boxSizing: 'border-box', textAlign: 'center', padding: '6px 2px', fontSize: 13 }} />
                               <button onClick={() => toggleSetComplete(ex.id, s.id)} style={{ border: 'none', background: 'none', cursor: 'pointer', display: 'flex', justifyContent: 'center', minWidth: 0 }}>
                                 <div style={{ width: 22, height: 22, borderRadius: 11, background: s.completed ? C.green : 'rgba(120,120,128,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                   {s.completed && <Check size={13} color="#fff" />}
@@ -820,7 +849,7 @@ function WorkoutTab({ workouts, save }) {
         )}
 
         <div style={{ marginBottom: 16 }}>
-          <button onClick={() => setShowPicker(true)} style={{
+          <button onClick={() => { setPickerBaseline(selected.map(e => e.id)); setShowPicker(true); }} style={{
             width: '100%', border: '1.5px dashed rgba(10,132,255,0.4)', borderRadius: 18, padding: '16px',
             background: 'rgba(10,132,255,0.06)', color: C.blue, fontSize: 15, fontWeight: 600, fontFamily: FONT,
             cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
@@ -840,6 +869,32 @@ function WorkoutTab({ workouts, save }) {
                 onChange={v => updateSetField(wheelEdit.exId, wheelEdit.setId, wheelEdit.field, v)} />
               <div style={{ marginTop: 14 }}>
                 <PrimaryButton onClick={() => setWheelEdit(null)} color={C.blue}>完成</PrimaryButton>
+              </div>
+            </Modal>
+          );
+        })()}
+
+        {unitEdit && (() => {
+          const ex = selected.find(e => e.id === unitEdit);
+          if (!ex) return null;
+          const items = UNITS.includes(ex.unit) ? UNITS : [...UNITS, ex.unit];
+          return (
+            <Modal title="强度单位" onClose={() => setUnitEdit(null)} width={260}>
+              <WheelPicker value={ex.unit} items={items}
+                onChange={v => setSelected(s => s.map(e => e.id === unitEdit ? { ...e, unit: v } : e))} />
+              <div style={{ display: 'flex', gap: 6, marginTop: 12 }}>
+                <input value={customUnit} onChange={e => setCustomUnit(e.target.value)} placeholder="自定义单位，如：片"
+                  style={{ ...inputStyle, flex: 1 }} />
+                <button onClick={() => {
+                  if (!customUnit.trim()) return;
+                  setSelected(s => s.map(e => e.id === unitEdit ? { ...e, unit: customUnit.trim() } : e));
+                  setCustomUnit('');
+                }} style={{ border: 'none', background: C.blue, borderRadius: 10, width: 40, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Check size={15} color="#fff" />
+                </button>
+              </div>
+              <div style={{ marginTop: 12 }}>
+                <PrimaryButton onClick={() => setUnitEdit(null)} color={C.blue}>完成</PrimaryButton>
               </div>
             </Modal>
           );
@@ -931,7 +986,7 @@ function WorkoutTab({ workouts, save }) {
                   {(w.exercises || []).map((ex, i) => (
                     <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, fontFamily: FONT, marginBottom: 3 }}>
                       <span style={{ color: C.text }}>{ex.name}</span>
-                      <span style={{ color: C.sub }}>{(Array.isArray(ex.sets) ? ex.sets : []).map(s => `${s.reps ?? s.value ?? '-'}次${s.intensity ? '/' + s.intensity + (ex.unit || '') : ''}`).join('、')}</span>
+                      <span style={{ color: C.sub }}>{(Array.isArray(ex.sets) ? ex.sets : []).length}组</span>
                     </div>
                   ))}
                 </div>
@@ -1231,7 +1286,7 @@ function WeightTab({ weights, save }) {
                       <CartesianGrid strokeDasharray="3 3" stroke={C.sep} vertical={false} />
                       <XAxis dataKey="date" tickFormatter={d => d.slice(5)} tick={{ fontSize: 10, fill: C.sub }} />
                       <YAxis tick={{ fontSize: 10, fill: C.sub }} domain={['dataMin - 1', 'dataMax + 1']} label={{ value: 'kg', angle: -90, position: 'insideLeft', fontSize: 11, fill: C.sub }} />
-                      <Tooltip labelFormatter={d => fmtDate(d)} {...tooltipStyle} formatter={v => [`${v} kg`, '当日均值']} />
+                      <Tooltip labelFormatter={d => fmtDate(d)} {...tooltipStyle} formatter={v => [`${v} kg`, '当日均值']} cursor={false} />
                       {showAvg && overallAvg !== null && (
                         <ReferenceLine y={overallAvg} stroke={C.orange} strokeDasharray="4 4"
                           label={{ value: `均值 ${overallAvg}kg`, position: 'top', fill: C.orange, fontSize: 11, fontFamily: FONT }} />
@@ -1395,12 +1450,23 @@ function StatsTab({ workouts, meals, weights }) {
   function nextMonth() { setCalDate(c => { const m = c.month + 1; return m > 11 ? { year: c.year + 1, month: 0 } : { year: c.year, month: m }; }); }
 
   const currentValueByDate = metric === 'workout' ? workoutDurationByDate : metric === 'meal' ? mealByDate : weightByDate;
-  const weightColorFn = useMemo(() => {
-    const vals = weights.map(w => w.weight);
-    const mn = vals.length ? Math.min(...vals) : 0, mx = vals.length ? Math.max(...vals) : 1;
-    return v => { if (!v) return 'rgba(60,60,67,0.1)'; const t = mx > mn ? (v - mn) / (mx - mn) : 0.5; return `rgba(10,132,255,${(0.25 + t * 0.75).toFixed(2)})`; };
-  }, [weights]);
-  const currentColorFn = metric === 'workout' ? workoutColor : metric === 'meal' ? mealColor : weightColorFn;
+  const weightDeltaByDate = useMemo(() => {
+    const dates = Object.keys(weightByDate).sort();
+    const m = {};
+    dates.forEach((d, i) => { m[d] = i === 0 ? null : +(weightByDate[d] - weightByDate[dates[i - 1]]).toFixed(1); });
+    return m;
+  }, [weightByDate]);
+  const weightDeltaLabelByDate = useMemo(() => {
+    const m = {};
+    Object.keys(weightDeltaByDate).forEach(d => { const v = weightDeltaByDate[d]; m[d] = v == null ? null : `${v > 0 ? '+' : ''}${v}`; });
+    return m;
+  }, [weightDeltaByDate]);
+  function weightDeltaColor(v) {
+    if (!v) return 'rgba(120,120,128,0.12)';
+    const t = Math.min(1, Math.abs(v) / 2);
+    return v > 0 ? `rgba(255,69,58,${(0.25 + t * 0.75).toFixed(2)})` : `rgba(48,209,88,${(0.25 + t * 0.75).toFixed(2)})`;
+  }
+  const currentColorFn = metric === 'workout' ? workoutColor : metric === 'meal' ? mealColor : weightDeltaColor;
 
   const summaryTitles = { workout: '本周训练详情', duration: '本周训练时长详情', calories: '每日热量详情', weight: '体重变化详情' };
 
@@ -1421,8 +1487,10 @@ function StatsTab({ workouts, meals, weights }) {
               <>
                 <MonthCalendar
                   year={calDate.year} month={calDate.month} onPrev={prevMonth} onNext={nextMonth}
-                  valueByDate={currentValueByDate} colorFn={currentColorFn} binary={false}
+                  valueByDate={metric === 'weight' ? weightDeltaByDate : currentValueByDate} colorFn={currentColorFn} binary={false}
                   onDayClick={setDayDetail}
+                  presenceByDate={metric === 'weight' ? weightByDate : undefined}
+                  subLabelByDate={metric === 'weight' ? weightDeltaLabelByDate : undefined}
                 />
                 {metric === 'workout' && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12 }}>
@@ -1433,10 +1501,10 @@ function StatsTab({ workouts, meals, weights }) {
                 )}
                 {metric === 'meal' && <Legend items={[['未记录', 'rgba(60,60,67,0.1)'], ['<1200', 'rgba(255,159,10,0.3)'], ['1200-2500', 'rgba(255,159,10,0.65)'], ['>2500', 'rgba(255,69,58,0.8)']]} />}
                 {metric === 'weight' && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12 }}>
-                    <span style={{ fontSize: 11, color: C.sub, fontFamily: FONT }}>轻</span>
-                    <div style={{ flex: 1, height: 8, borderRadius: 4, background: 'linear-gradient(90deg, rgba(10,132,255,0.25), rgba(10,132,255,1))' }} />
-                    <span style={{ fontSize: 11, color: C.sub, fontFamily: FONT }}>重</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 12, fontSize: 11, color: C.sub, fontFamily: FONT }}>
+                    <span>跌</span>
+                    <div style={{ flex: 1, height: 8, borderRadius: 4, background: 'linear-gradient(90deg, rgba(48,209,88,1), rgba(120,120,128,0.12), rgba(255,69,58,1))' }} />
+                    <span>涨</span>
                   </div>
                 )}
               </>
@@ -1478,7 +1546,7 @@ function StatsTab({ workouts, meals, weights }) {
                       <CartesianGrid strokeDasharray="3 3" stroke={C.sep} vertical={false} />
                       <XAxis dataKey="date" tick={{ fontSize: 10, fill: C.sub }} />
                       <YAxis tick={{ fontSize: 10, fill: C.sub }} domain={['dataMin - 1', 'dataMax + 1']} label={{ value: 'kg', angle: -90, position: 'insideLeft', fontSize: 11, fill: C.sub }} />
-                      <Tooltip {...tooltipStyle} />
+                      <Tooltip {...tooltipStyle} cursor={false} />
                       <Line type="monotone" dataKey="weight" stroke={C.blue} strokeWidth={2} dot={{ r: 3 }} name="当日均值" />
                     </LineChart>
                   </ResponsiveContainer>
@@ -1549,7 +1617,7 @@ function StatsTab({ workouts, meals, weights }) {
           {summaryDetail === 'workout' && (() => {
             const list = [...workouts].filter(w => thisWeekDates.includes(w.date)).sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time));
             return list.length === 0 ? <Empty text="本周还没有训练记录" /> : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxHeight: '55vh', overflowY: 'auto' }}>
                 {list.map(w => (
                   <div key={w.id} style={{ ...GLASS, borderRadius: 14, padding: '10px 12px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, fontWeight: 600, color: C.text, fontFamily: FONT, marginBottom: 4 }}>
@@ -1569,7 +1637,7 @@ function StatsTab({ workouts, meals, weights }) {
             });
             const rows = thisWeekDates.filter(d => byDay[d]).sort((a, b) => b.localeCompare(a));
             return rows.length === 0 ? <Empty text="本周还没有训练时长记录" /> : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: '55vh', overflowY: 'auto' }}>
                 {rows.map(d => (
                   <div key={d} style={{ ...GLASS, borderRadius: 14, padding: '10px 14px', display: 'flex', justifyContent: 'space-between' }}>
                     <span style={{ fontSize: 14, color: C.text, fontFamily: FONT }}>{fmtDate(d)}</span>
@@ -1584,7 +1652,7 @@ function StatsTab({ workouts, meals, weights }) {
             meals.forEach(m => { byDay[m.date] = (byDay[m.date] || 0) + (m.calories || 0); });
             const rows = Object.keys(byDay).sort((a, b) => b.localeCompare(a)).slice(0, 14);
             return rows.length === 0 ? <Empty text="还没有饮食记录" /> : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: '55vh', overflowY: 'auto' }}>
                 {rows.map(d => (
                   <div key={d} style={{ ...GLASS, borderRadius: 14, padding: '10px 14px', display: 'flex', justifyContent: 'space-between' }}>
                     <span style={{ fontSize: 14, color: C.text, fontFamily: FONT }}>{fmtDate(d)}</span>
