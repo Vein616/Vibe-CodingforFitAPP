@@ -85,6 +85,8 @@ const MEAL_TYPES = [
 
 const UNITS = ['kg', '秒', '分钟', '公里'];
 
+const MACARON = { 胸: '#FF9FB0', 背: '#8FCBEB', 肩: '#FFC28A', 腿: '#B7A6EE', 臂: '#8FE0C7', 腹: '#FFA8CE', 有氧: '#9BE0AE', 'AI推荐': '#C7B8F5', 自定义: '#B9B9C4' };
+
 function uid() { return Math.random().toString(36).slice(2, 10); }
 function todayStr() { return new Date().toISOString().slice(0, 10); }
 function nowTime() { return new Date().toTimeString().slice(0, 5); }
@@ -265,7 +267,7 @@ function Modal({ title, onClose, children, width }) {
 
 const navBtnStyle = { border: 'none', background: 'rgba(120,120,128,0.12)', borderRadius: 10, width: 30, height: 30, fontSize: 16, color: C.text, cursor: 'pointer', fontFamily: FONT, flexShrink: 0 };
 
-function MonthCalendar({ year, month, onPrev, onNext, valueByDate, colorFn, binary, onDayClick, tagsByDate, presenceByDate, subLabelByDate }) {
+function MonthCalendar({ year, month, onPrev, onNext, valueByDate, colorFn, binary, onDayClick, presenceByDate, subLabelByDate, subLabelColorByDate, darkText }) {
   const first = new Date(year, month, 1);
   const startWeekday = first.getDay();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
@@ -292,36 +294,28 @@ function MonthCalendar({ year, month, onPrev, onNext, valueByDate, colorFn, bina
         ))}
       </div>
       {weeks.map((week, wi) => (
-        <div key={wi} style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 6, marginBottom: 6 }}>
+        <div key={wi} style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 6, marginBottom: 8 }}>
           {week.map((d, di) => {
             if (!d) return <div key={di} />;
             const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
             const val = valueByDate[dateStr];
             const has = presenceByDate ? !!presenceByDate[dateStr] : (val || 0) > 0;
             const isToday = dateStr === today;
-            const tags = tagsByDate && tagsByDate[dateStr];
             const subLabel = subLabelByDate && subLabelByDate[dateStr];
+            const subLabelColor = (subLabelColorByDate && subLabelColorByDate[dateStr]) || C.sub;
             return (
-              <button key={di} onClick={() => onDayClick(dateStr)} style={{
-                minHeight: 50, border: isToday ? `1.5px solid ${C.blue}` : 'none', borderRadius: 11,
-                background: binary ? (has ? colorFn(1) : 'rgba(120,120,128,0.07)') : colorFn(val || 0),
-                cursor: 'pointer', fontSize: 14, fontWeight: has ? 700 : 500,
-                color: has ? '#fff' : C.sub, fontFamily: FONT, padding: '5px 2px 4px',
-                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-start', gap: 2,
-              }}>
-                <span>{d}</span>
-                {tags && tags.length > 0 && (
-                  <span style={{ display: 'flex', gap: 2, flexWrap: 'wrap', justifyContent: 'center' }}>
-                    {tags.map((t, ci) => (
-                      <span key={ci} style={{
-                        fontSize: 8, lineHeight: '13px', width: 13, height: 13, borderRadius: 4,
-                        background: t.color, color: '#fff', border: '1px solid rgba(255,255,255,0.7)', fontFamily: FONT,
-                      }}>{t.label[0]}</span>
-                    ))}
-                  </span>
+              <div key={di} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
+                <button onClick={() => onDayClick(dateStr)} style={{
+                  width: '100%', aspectRatio: '1', border: isToday ? `2px solid ${C.blue}` : 'none', borderRadius: 11,
+                  background: binary ? (has ? colorFn(1) : 'rgba(120,120,128,0.07)') : colorFn(val || 0),
+                  boxShadow: isToday ? `0 0 0 3px rgba(10,132,255,0.15)` : 'none',
+                  cursor: 'pointer', fontSize: 14, fontWeight: (has || isToday) ? 700 : 500,
+                  color: darkText ? C.text : (has ? '#fff' : C.sub), fontFamily: FONT, padding: 0,
+                }}>{d}</button>
+                {subLabel && (
+                  <span style={{ fontSize: 9, fontWeight: 700, fontFamily: FONT, color: subLabelColor, maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{subLabel}</span>
                 )}
-                {subLabel && <span style={{ fontSize: 8, fontFamily: FONT, opacity: 0.9 }}>{subLabel}</span>}
-              </button>
+              </div>
             );
           })}
         </div>
@@ -397,6 +391,7 @@ function WorkoutTab({ workouts, save }) {
   const [wheelEdit, setWheelEdit] = useState(null);
   const [unitEdit, setUnitEdit] = useState(null);
   const [customUnit, setCustomUnit] = useState('');
+  const [unitsList, setUnitsList] = useState(UNITS);
   const [, forceTick] = useState(0);
 
   useEffect(() => {
@@ -560,13 +555,23 @@ function WorkoutTab({ workouts, save }) {
 
   const sorted = [...workouts].sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time));
   const workoutDayMap = useMemo(() => { const m = {}; workouts.forEach(w => { m[w.date] = (m[w.date] || 0) + 1; }); return m; }, [workouts]);
-  const workoutTagsByDate = useMemo(() => {
-    const m = {};
+  const workoutMainPartByDate = useMemo(() => {
+    const counts = {};
     workouts.forEach(w => {
-      const seen = new Map();
-      (w.exercises || []).forEach(e => { if (!seen.has(e.group)) seen.set(e.group, e.color); });
-      m[w.date] = [...seen.entries()].map(([label, color]) => ({ label, color })).slice(0, 3);
+      const c = counts[w.date] = counts[w.date] || {};
+      (w.exercises || []).forEach(e => { c[e.group] = (c[e.group] || 0) + 1; });
     });
+    const m = {};
+    Object.entries(counts).forEach(([d, c]) => {
+      let best = null, bestN = 0;
+      Object.entries(c).forEach(([k, v]) => { if (v > bestN) { best = k; bestN = v; } });
+      if (best) m[d] = best;
+    });
+    return m;
+  }, [workouts]);
+  const workoutMainPartColorByDate = useMemo(() => {
+    const m = {};
+    Object.entries(workoutMainPartByDate).forEach(([d, part]) => { m[d] = MACARON[part] || MACARON['自定义']; });
     return m;
   }, [workouts]);
   const currentGroup = MUSCLE_GROUPS.find(g => g.key === activeGroup);
@@ -877,17 +882,19 @@ function WorkoutTab({ workouts, save }) {
         {unitEdit && (() => {
           const ex = selected.find(e => e.id === unitEdit);
           if (!ex) return null;
-          const items = UNITS.includes(ex.unit) ? UNITS : [...UNITS, ex.unit];
+          const items = unitsList.includes(ex.unit) ? unitsList : [...unitsList, ex.unit];
           return (
             <Modal title="强度单位" onClose={() => setUnitEdit(null)} width={260}>
-              <WheelPicker value={ex.unit} items={items}
+              <WheelPicker key={items.join('|')} value={ex.unit} items={items}
                 onChange={v => setSelected(s => s.map(e => e.id === unitEdit ? { ...e, unit: v } : e))} />
               <div style={{ display: 'flex', gap: 6, marginTop: 12 }}>
                 <input value={customUnit} onChange={e => setCustomUnit(e.target.value)} placeholder="自定义单位，如：片"
                   style={{ ...inputStyle, flex: 1 }} />
                 <button onClick={() => {
-                  if (!customUnit.trim()) return;
-                  setSelected(s => s.map(e => e.id === unitEdit ? { ...e, unit: customUnit.trim() } : e));
+                  const u = customUnit.trim();
+                  if (!u) return;
+                  setUnitsList(list => list.includes(u) ? list : [...list, u]);
+                  setSelected(s => s.map(e => e.id === unitEdit ? { ...e, unit: u } : e));
                   setCustomUnit('');
                 }} style={{ border: 'none', background: C.blue, borderRadius: 10, width: 40, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <Check size={15} color="#fff" />
@@ -907,7 +914,8 @@ function WorkoutTab({ workouts, save }) {
               year={calDate.year} month={calDate.month}
               onPrev={() => setCalDate(c => { const m = c.month - 1; return m < 0 ? { year: c.year - 1, month: 11 } : { year: c.year, month: m }; })}
               onNext={() => setCalDate(c => { const m = c.month + 1; return m > 11 ? { year: c.year + 1, month: 0 } : { year: c.year, month: m }; })}
-              valueByDate={workoutDayMap} colorFn={() => 'rgba(48,209,88,1)'} binary tagsByDate={workoutTagsByDate}
+              valueByDate={workoutDayMap} colorFn={() => 'rgba(48,209,88,1)'} binary
+              subLabelByDate={workoutMainPartByDate} subLabelColorByDate={workoutMainPartColorByDate}
               onDayClick={d => { if (workoutDayMap[d]) { setCalDayDetail(d); setEditingId(null); } }}
             />
             <Legend items={[['未训练', 'rgba(120,120,128,0.07)'], ['有训练', 'rgba(48,209,88,1)']]} />
@@ -1276,17 +1284,20 @@ function WeightTab({ weights, save }) {
               <>
                 <div style={{ height: 260 }}>
                   <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={dayAvgData}
-                      margin={{ left: -20, right: 8, top: showAvg ? 20 : 5 }}
-                      onClick={e => {
-                        if (!e || !e.activeLabel) return;
-                        if (tappedDate === e.activeLabel) { setWeightDetail(e.activeLabel); setTappedDate(null); }
-                        else setTappedDate(e.activeLabel);
-                      }}>
+                    <LineChart data={dayAvgData} margin={{ left: -20, right: 8, top: showAvg ? 20 : 5 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke={C.sep} vertical={false} />
                       <XAxis dataKey="date" tickFormatter={d => d.slice(5)} tick={{ fontSize: 10, fill: C.sub }} />
                       <YAxis tick={{ fontSize: 10, fill: C.sub }} domain={['dataMin - 1', 'dataMax + 1']} label={{ value: 'kg', angle: -90, position: 'insideLeft', fontSize: 11, fill: C.sub }} />
-                      <Tooltip labelFormatter={d => fmtDate(d)} {...tooltipStyle} formatter={v => [`${v} kg`, '当日均值']} cursor={false} />
+                      <Tooltip cursor={false} wrapperStyle={{ pointerEvents: 'auto' }} content={({ active, payload, label }) => {
+                        if (!active || !payload || !payload.length) return null;
+                        return (
+                          <div onClick={() => setWeightDetail(label)} style={{ ...tooltipStyle.contentStyle, cursor: 'pointer' }}>
+                            <div style={tooltipStyle.labelStyle}>{fmtDate(label)}</div>
+                            <div style={tooltipStyle.itemStyle}>当日均值 {payload[0].value} kg</div>
+                            <div style={{ fontSize: 10, color: C.blue, marginTop: 2 }}>点击查看详情</div>
+                          </div>
+                        );
+                      }} />
                       {showAvg && overallAvg !== null && (
                         <ReferenceLine y={overallAvg} stroke={C.orange} strokeDasharray="4 4"
                           label={{ value: `均值 ${overallAvg}kg`, position: 'top', fill: C.orange, fontSize: 11, fontFamily: FONT }} />
@@ -1466,6 +1477,11 @@ function StatsTab({ workouts, meals, weights }) {
     const t = Math.min(1, Math.abs(v) / 2);
     return v > 0 ? `rgba(255,69,58,${(0.25 + t * 0.75).toFixed(2)})` : `rgba(48,209,88,${(0.25 + t * 0.75).toFixed(2)})`;
   }
+  const weightDeltaTextColorByDate = useMemo(() => {
+    const m = {};
+    Object.entries(weightDeltaByDate).forEach(([d, v]) => { m[d] = !v ? C.sub : (v > 0 ? '#D70015' : '#1F9C4A'); });
+    return m;
+  }, [weightDeltaByDate]);
   const currentColorFn = metric === 'workout' ? workoutColor : metric === 'meal' ? mealColor : weightDeltaColor;
 
   const summaryTitles = { workout: '本周训练详情', duration: '本周训练时长详情', calories: '每日热量详情', weight: '体重变化详情' };
@@ -1491,6 +1507,8 @@ function StatsTab({ workouts, meals, weights }) {
                   onDayClick={setDayDetail}
                   presenceByDate={metric === 'weight' ? weightByDate : undefined}
                   subLabelByDate={metric === 'weight' ? weightDeltaLabelByDate : undefined}
+                  subLabelColorByDate={metric === 'weight' ? weightDeltaTextColorByDate : undefined}
+                  darkText={metric === 'weight'}
                 />
                 {metric === 'workout' && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12 }}>
